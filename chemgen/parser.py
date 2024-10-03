@@ -3,6 +3,9 @@ import sys
 import numpy as np
 import torch
 import sympy as sp
+import cantera as ct
+import os
+import subprocess
 
 
 """
@@ -13,21 +16,117 @@ import sympy as sp
 """
 
 class ckparser:
-    def __init__(self,ck_file,therm_file,parser="inhouse"):
-        self.__ckfile = ck_file
-        self.__therm_file = therm_file
+    def __init__(self,parser="cantera"):
         ###
-        if(parser=="inhouse"):
+        if(parser=="cantera"):
+            self.parse_reactions = self.__cantera_reaction_parser
+            self.parse_species = self.__cantera_species_parser
+            self.parse_thermo = self.__cantera_thermo_parser
+        elif(parser=="inhouse"):
+            print("WARNING: inhouse parser is deprecated and may not work with all mechanisms. Use Cantera parser instead.")
             self.parse_reactions = self.__inhouse_reaction_parser
             self.parse_species = self.__inhouse_species_parser
             self.parse_thermo = self.__inhouse_thermo_parser
-
+        else:
+            raise ValueError("parser not found")
         self.__elem_wt = {}
         self.__elem_wt["H"] = 1.007969975471497E0
         self.__elem_wt["O"] = 1.599940013885498E1
         self.__elem_wt["C"] = 1.201115036010742E1
         self.__elem_wt["N"] = 1.400669956207276E1
 
+        ##supported reaction types
+        self.__reaction_types = ["standard","troe","third_body","unknown"]
+        ##cantera reaction types to my reaction types
+        self.__ct_to_ckp_type = {
+                                "falloff-Troe": "troe",
+                                "three-body-Arrhenius": "third_body",
+                                "Arrhenius": "standard",
+                                "falloff-Lindemann": "unknown",
+                                "falloff-SRI": "unknown",
+                                }
+    @property
+    def reaction_types(self):
+        return self.__reaction_types
+    
+    def __cantera_reaction_parser(self, ck_file, therm_file=None):
+        import cantera as ct
+        import subprocess
+        import os
+
+        # Check if YAML file already exists
+        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+        if not os.path.exists(yaml_file):
+            # Convert Chemkin files to YAML using ck2yaml
+            if(therm_file is not None):
+                subprocess.run(['ck2yaml', '--input', ck_file, '--thermo', therm_file, '--output', yaml_file], check=True)
+            else:
+                subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
+        
+        gas = ct.Solution(yaml_file)
+        reactions = gas.reactions()
+        r_dict = {}
+        idx = 0
+        for r in reactions:
+            r_dict[idx] = {
+                "eqn": r.equation,
+                "reacts": dict(r.reactants),
+                "prods": dict(r.products),
+            }
+            r_dict[idx]["type"] = self.__ct_to_ckp_type[r.reaction_type]
+            r_dict[idx]["ct"] = r #cantera reaction object
+            r_dict[idx]["dup"] = r.duplicate
+            r_dict[idx]["reversible"] = r.reversible
+            if r_dict[idx]["type"] == "troe":
+                r_dict[idx]["arh"] = (r.rate.high_rate.pre_exponential_factor, 
+                                      r.rate.high_rate.temperature_exponent, 
+                                      r.rate.high_rate.activation_energy)
+                r_dict[idx]["troe"] = {
+                    "low": (r.rate.low_rate.pre_exponential_factor,
+                            r.rate.low_rate.temperature_exponent,
+                            r.rate.low_rate.activation_energy),
+                    "troe": tuple(r.rate.falloff_coeffs)
+                }
+            elif r_dict[idx]["type"] == "third_body":
+                r_dict[idx]["arh"] = (r.rate.pre_exponential_factor, 
+                                      r.rate.temperature_exponent, 
+                                      r.rate.activation_energy)
+                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
+            elif r_dict[idx]["type"] == "standard":
+                r_dict[idx]["arh"] = (r.rate.pre_exponential_factor, 
+                                      r.rate.temperature_exponent, 
+                                      r.rate.activation_energy)
+            else:
+                continue
+
+            idx += 1
+            
+        return r_dict
+        
+    def __cantera_species_parser(self, ck_file):
+        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+        if not os.path.exists(yaml_file):
+            subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
+        
+        gas = ct.Solution(yaml_file)
+        return [sp.name for sp in gas.species()]
+
+    def __cantera_thermo_parser(self, ck_file, therm_file=""):
+        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+        if not os.path.exists(yaml_file):
+            if(therm_file == ""):
+                subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
+            else:
+                subprocess.run(['ck2yaml', '--input', ck_file, '--thermo', therm_file, '--output', yaml_file], check=True)
+        
+        gas = ct.Solution(yaml_file)
+        thermo_data = {}
+        for sp in gas.species():
+            nasa_coeffs = sp.thermo.coeffs
+            temp_limits = [sp.thermo.min_temp, sp.thermo.max_temp, sp.thermo.coeffs[0]]
+            thermo_data[sp.name] = (temp_limits, nasa_coeffs)
+        return thermo_data
+        
     """
         fuction removes all the comment lines between two lines. the lines
         have to match the start and end exactly
@@ -37,15 +136,14 @@ class ckparser:
         start_idx =[idx for idx,l in enumerate(lower_lines) if start == l][0]
         end_idx =lower_lines[start_idx:].index(end.lower())
         return lower_lines[start_idx+1:start_idx + end_idx]
-        
     """
         function to parse all the reactions
         order_change = True puts all standard,falloff,third-body,plog reactions
         in that order
     """
     
-    def __inhouse_reaction_parser(self,change_order=False):
-        all_lines=open(self.__ckfile,"r").read().splitlines()
+    def __inhouse_reaction_parser(self, ck_file, therm_file):
+        all_lines=open(ck_file,"r").read().splitlines()
         
         ###
         react_lines = self.__strip_parts(all_lines,"reactions","end")
@@ -67,20 +165,20 @@ class ckparser:
                 r_dict[rnum] = {}
                 temp_list = [i for i in l[::-1].strip().replace("\t"," ").split(" ") if i!=""]
                 r_dict[rnum]["eqn"] = "".join(temp_list[3:])[::-1]
-                r_dict[rnum]["arh"] = [float(i[::-1]) for i in temp_list[:3][::-1]]
+                r_dict[rnum]["arh"] = tuple([float(i[::-1]) for i in temp_list[:3][::-1]])
 
                 r_dict[rnum]["reacts"],r_dict[rnum]["prods"] = \
-                    self.__parse_reaction_eqn(r_dict[rnum]["eqn"])
+                    self.__parse_reaction_eqn(r_dict[rnum]["eqn"], ck_file)
             ### I am assuming either troe or plog
             ### I am just adding these as strings when needed I will use these
             ### I am lucky that NNH reactions for H2 JICF doesn't have any of these!!!
             elif("low" in l):
                 r_dict[rnum]["troe"] = {}
                 temp_list = [i for i in l.strip().replace("\t"," ").split(" ") if i!=""]
-                r_dict[rnum]["troe"]["low"] = [float(i) for i in temp_list[1:-1]]
+                r_dict[rnum]["troe"]["low"] = tuple([float(i) for i in temp_list[1:-1]])
             elif("troe" in l):
                 temp_list = [i for i in l.strip().replace("\t"," ").split(" ") if i!=""]
-                r_dict[rnum]["troe"]["troe"] = [float(i) for i in temp_list[1:-1]]
+                r_dict[rnum]["troe"]["troe"] = tuple([float(i) for i in temp_list[1:-1]])
                 troe_r.append(rnum)
             elif("plog" in l):
                 if ("plog" in r_dict[rnum].keys()):
@@ -94,55 +192,23 @@ class ckparser:
                 r_dict[rnum]["dup"] = True
             ###I am just assuming this will be a third body collision efficiency line
             else:
-                r_dict[rnum]["third-body"] = {}
+                r_dict[rnum]["third_body"] = {}
                 temp_list = [i.strip() for i in l.split("/")[:-1]]
                 for i in range(len(temp_list)//2):
                     if(float(temp_list[2*i+1])-1.0 != 0.0):
-                        r_dict[rnum]["third-body"][temp_list[2*i]] = float(temp_list[2*i+1])-1.0
+                        r_dict[rnum]["third_body"][temp_list[2*i]] = float(temp_list[2*i+1])-1.0
                 if(rnum not in troe_r):
                     third_r.append(rnum)
     ###
-        if(not change_order):
-            return r_dict
-        else:
-            nreacts = len(r_dict.keys())
-            n_third = len(third_r)
-            n_plog = len(plog_r)
-            n_troe = len(troe_r)
-            n_st = nreacts - n_third - n_plog - n_troe
-            new_rnum = 1
-            new_r_dict = {}
-            for i in range(len(r_dict.keys())):
-                if(i+1 in troe_r):
-                    rnum = n_st+troe_r.index(i+1)+1
-                    if(rnum in new_r_dict.keys()):
-                        print("RPARSE ERROR: %d is already there"%(rnum))
-                        sys.exit()
-                    new_r_dict[rnum] = r_dict.pop(i+1)
-                elif(i+1 in third_r):
-                    rnum = n_st+n_troe+third_r.index(i+1)+1
-                    if(rnum in new_r_dict.keys()):
-                        print("RPARSE ERROR: %d is already there"%(rnum))
-                        sys.exit()
-                    new_r_dict[rnum] = r_dict.pop(i+1)
-                elif(i+1 in plog_r):
-                    rnum = n_st+n_troe+n_third+plog_r.index(i+1)+1
-                    if(rnum in new_r_dict.keys()):
-                        print("RPARSE ERROR: %d is already there"%(rnum))
-                        sys.exit()
-                    new_r_dict[rnum] = r_dict.pop(i+1)
-                else:
-                    new_r_dict[new_rnum] = r_dict.pop(i+1)
-                    new_rnum = new_rnum + 1
-            return new_r_dict,n_st,n_troe,n_third,n_plog
+        return r_dict
+        
         
     """
         returns all the species in .inp chemkin file
     """
     
-    def __inhouse_species_parser(self):
-        inp_file = self.__ckfile
-        f=open(inp_file)
+    def __inhouse_species_parser(self, ck_file):
+        f=open(ck_file)
         lines=f.readlines()
         f.close()
         ## according to chemkin 2000 manual species can be written as 
@@ -186,22 +252,21 @@ class ckparser:
         function to parse the thermodynamic data
     """
 
-    def __inhouse_thermo_parser(self):
-        species = self.__inhouse_species_parser()
+    def __inhouse_thermo_parser(self, ck_file, therm_file):
+        species = self.__inhouse_species_parser(ck_file)
         thermo_data = {}
         for spec in species:
-            thermo_data[spec] = self.__get_nasa_coffiecients(spec)
+            thermo_data[spec] = self.__get_nasa_coffiecients(spec, therm_file)
         return thermo_data
     
     """
         function returns the nasa polynomila coeff and temeparture limits
     """
     
-    def __get_nasa_coffiecients(self,spec_name):
-        in_file = self.__therm_file
+    def __get_nasa_coffiecients(self, spec_name, therm_file):
         coef = []
         temp_limits = []
-        with open(in_file, "r") as filestream:
+        with open(therm_file, "r") as filestream:
             count = 0
             flag_F = False
             for line in filestream:
@@ -219,7 +284,7 @@ class ckparser:
                 if flag_F and count > 1:
                     for i in range (0,75,15):
                         coef.append(np.float64(l[0][i:i+15]))
-        print(spec_name,temp_limits)
+        
         return temp_limits,coef
 
     """
@@ -227,7 +292,7 @@ class ckparser:
         also returns its stoichiometric coefficients
     """
     
-    def __parse_reaction_eqn(self,rname,remove_dups=False):
+    def __parse_reaction_eqn(self, rname, ck_file, remove_dups=False):
         if(rname == ""):
             return {},{}
 ##
@@ -244,7 +309,7 @@ class ckparser:
         reacts_temp = [i.strip() for i in rname.split(sym)[0].split("+")]
         prods_temp =  [i.strip() for i in rname.split(sym)[1].split("+")]
         ##
-        all_specs = self.__inhouse_species_parser()
+        all_specs = self.__inhouse_species_parser(ck_file)
         reacts = {}
         prods = {}
         while (len(reacts_temp)>0):
@@ -306,13 +371,11 @@ class ckparser:
     """ 
         function to parse the elements 
     """
-    def __parse_element_data(self):
-        all_lines = open(self.__ckfile,"r").read().splitlines()
+    def __parse_element_data(self, ck_file):
+        all_lines = open(ck_file,"r").read().splitlines()
 
         elem_line = self.__strip_parts(all_lines,"elements","end")
         elements = [i for l in elem_line for i in l.strip().replace("\t"," ").split(" ")]
         return elements
-
-
 
 

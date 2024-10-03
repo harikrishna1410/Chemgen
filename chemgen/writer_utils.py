@@ -1,6 +1,4 @@
-
-
-
+space = " "
 """
 this function adds a fortran array declaration to the file
 """
@@ -30,3 +28,14 @@ def append_new_str(new_str,curr_line,lines):
     else:
         curr_line = curr_line + new_str
     return curr_line,lines
+
+
+def calculate_nsp_per_block(max_sp):
+    nsp_per_block = 1
+    while nsp_per_block * 2 <= max_sp:
+        nsp_per_block *= 2
+    return nsp_per_block
+
+def calculate_nreact_per_block(nreact_mech):
+    # This is a placeholder implementation. You may need to adjust this based on your specific requirements.
+    return min(32, nreact_mech)
