@@ -1,8 +1,8 @@
 from .parser import ckparser
-from .utils import calculate_nsp_per_block, calculate_nreact_per_block
 import cantera as ct
 import networkx as nx
 import sympy as sp
+import math
 
 """
     Class to hold the info on the whole chemistry and perform manupulations on it
@@ -14,7 +14,7 @@ import sympy as sp
         build_expr: builds the expressions for each and every reaction
         identify qssa species
 """
-REACTION_TYPES = ["standard", "troe", "third_body", "plog"]
+
 class chemistry:
     def __init__(self, ck_file, therm_file, parser, build_graph=False,qssa_species=[]):
         
@@ -90,16 +90,16 @@ class chemistry:
     def reduced_species_name(self,species_idx):
         return self.__itos_red[species_idx]
     
-    def find_max_specs(self):
-        max_specs = 0
-        max_reacts = 0
-        max_prods = 0
+    def find_max_specs(self,good_number=False):
+        max_sp = 0
         for r_dict in self.reactions.values():
             reacts_dict, prods_dict = r_dict["reacts"], r_dict["prods"]
-            max_specs = max(max_specs, len(set(list(reacts_dict.keys()) + list(prods_dict.keys()))))
-            max_reacts = max(max_reacts, len(reacts_dict.keys()))
-            max_prods = max(max_prods, len(prods_dict.keys()))
-        return max_specs, max_reacts, max_prods
+            n_sp = max(len(reacts_dict.keys())  , len(prods_dict.keys()))
+            max_sp = max(max_sp, n_sp)
+        if good_number:
+            return 2**math.ceil(math.log2(max_sp))
+        else:
+            return max_sp
 
     def find_max_third_body(self):
         max_reacts = 0
@@ -108,6 +108,49 @@ class chemistry:
                 reacts_dict = r_dict["third_body"]
                 max_reacts = max(max_reacts, len(reacts_dict.keys()))
         return max_reacts
+
+    def add_dummy_reaction(self, reaction_type="standard"):
+        """
+        Add a dummy reaction with all zero coefficients and a dummy equation
+        that uses the first species on left and right hand side. It's also reversible.
+        
+        Args:
+            reaction_type (str): The type of reaction to add. Defaults to "standard".
+        
+        Returns:
+            int: The number of the newly added dummy reaction.
+        """
+        dummy_reaction_number = max(self.__reactions_dict.keys()) + 1
+        first_species = self.__species_list[0]
+        
+        dummy_reaction = {
+            "type": reaction_type,
+            "eqn": f"{first_species} <=> {first_species}",
+            "reacts": {first_species: 0.0},
+            "prods": {first_species: 0.0},
+            "arh": (0.0, 0.0, 0.0),  # [A, beta, Ea] all set to zero
+            "reversible": True,
+            "ct":None,
+            "dup": False
+        }
+        
+        # Add additional fields based on reaction type
+        if reaction_type == "troe":
+            dummy_reaction["troe"] = {
+                "low": (0.0, 0.0, 0.0),
+                "troe": (0.0, 0.0, 0.0, 0.0)
+            }
+        elif reaction_type == "third_body":
+            dummy_reaction["third_body"] = {first_species: 0.0}
+        elif reaction_type == "plog":
+            dummy_reaction["plog"] = {1: [0.0, 0.0, 0.0, 0.0]}  # [P, A, beta, Ea]
+        
+        self.__reactions_dict[dummy_reaction_number] = dummy_reaction
+        self.__reaction_types_list[reaction_type].append(dummy_reaction_number)
+        
+        return dummy_reaction_number
+    
+
     
 
 ##TODO:add these after implementing automatic qssa identification

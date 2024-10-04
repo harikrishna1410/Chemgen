@@ -6,8 +6,8 @@ SMALL = 1.0e-200  # a small value
 PATM = 1.01325e6  # atmospheric pressure
 
 # Default parallelization constants
-DEFAULT_NREACT_PER_BLOCK = 16
-DEFAULT_NSP_PER_BLOCK = 4
+DEFAULT_NREACT_PER_BLOCK = 1
+DEFAULT_NSP_PER_BLOCK = 1
 
 # Element weights
 ELEM_WT = {
@@ -53,9 +53,9 @@ static inline void copyConstantsToDevice(const double* A_h,
 """
 
 def get_header_content(chem: chemistry,
-                       NSP_PER_BLOCK=DEFAULT_NSP_PER_BLOCK,
-                       NREACT_PER_BLOCK=DEFAULT_NREACT_PER_BLOCK):
-    max_specs, _, _ = chem.find_max_specs()
+                       parallel_level=1,
+                       nreact_per_block=DEFAULT_NREACT_PER_BLOCK):
+    max_specs = chem.find_max_specs(parallel_level>2)
     header_content = f"""#ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include "hip/hip_runtime.h"
@@ -77,23 +77,23 @@ def get_header_content(chem: chemistry,
 //maximum number of species involved in a reaction
 //either on reactants side or products side
 //MAX_SP should be divisible by NSPEC_PER_THREAD when using v3 parallelisation
-#define MAX_SP {max_specs//2}
+#define MAX_SP {max_specs}
 //twice of above
-#define MAX_SP2 {max_specs}
+#define MAX_SP2 {max_specs*2}
 //max third body third body reactants
 #define MAX_THIRD_BODIES {chem.find_max_third_body()}
 //when using more v2 and v3 parallelisation
 //this had to divide all NREACT_* variables
-#define NREACT_PER_BLOCK {NREACT_PER_BLOCK} //number of reactions solved per thread block
+#define NREACT_PER_BLOCK {nreact_per_block} //number of reactions solved per thread block
 //this is used in v3 parallelisation
 //MAX_SP should be divisible by NSP_PER_THREAD when using v3 parallelisation
 //this is always some power of 2
-#define NSP_PER_BLOCK {NSP_PER_BLOCK}
+#define NSP_PER_BLOCK {DEFAULT_NSP_PER_BLOCK}
 //max number of species per thread block
 //ratio of MAX_SP/NSP_PER_THREAD should be divisible by 2
-#define SP_PER_THREAD {max_specs // NSP_PER_BLOCK}
+#define SP_PER_THREAD {max_specs // DEFAULT_NSP_PER_BLOCK}
 //twice of above
-#define SP2_PER_THREAD {(max_specs * 2) // NSP_PER_BLOCK}
+#define SP2_PER_THREAD {(max_specs * 2) // DEFAULT_NSP_PER_BLOCK}
 
 const double RU = {RU}; //universal gas constant
 const double SMALL = {SMALL}; //a small value

@@ -36,14 +36,12 @@ class ckparser:
         self.__elem_wt["N"] = 1.400669956207276E1
 
         ##supported reaction types
-        self.__reaction_types = ["standard","troe","third_body","unknown"]
+        self.__reaction_types = ["standard","troe","third_body"]
         ##cantera reaction types to my reaction types
         self.__ct_to_ckp_type = {
                                 "falloff-Troe": "troe",
                                 "three-body-Arrhenius": "third_body",
-                                "Arrhenius": "standard",
-                                "falloff-Lindemann": "unknown",
-                                "falloff-SRI": "unknown",
+                                "Arrhenius": "standard"
                                 }
     @property
     def reaction_types(self):
@@ -73,7 +71,7 @@ class ckparser:
                 "reacts": dict(r.reactants),
                 "prods": dict(r.products),
             }
-            r_dict[idx]["type"] = self.__ct_to_ckp_type[r.reaction_type]
+            r_dict[idx]["type"] = self.__ct_to_ckp_type.get(r.reaction_type, "unknown")
             r_dict[idx]["ct"] = r #cantera reaction object
             r_dict[idx]["dup"] = r.duplicate
             r_dict[idx]["reversible"] = r.reversible

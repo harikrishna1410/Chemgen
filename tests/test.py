@@ -14,8 +14,8 @@ ckp = ckparser()
 chem = chemistry(ck_file,therm_file,ckp)
 
 #print(chem.get_reactions_by_type("troe"))
-write_constants_header("./", chem)
-write_coef_module("./", chem)
+write_constants_header(os.path.dirname(abs_path), chem,parallel_level=3,veclen=16,nreact_per_block=4)
+write_coef_module(os.path.dirname(abs_path), chem,parallel_level=3,nreact_per_block=4)
 
 #reacts = chem.reactions
 

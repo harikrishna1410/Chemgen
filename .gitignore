@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+#output files
+*.f90
+*.h
+tests/*.f90
+tests/*.h
+
 # Distribution / packaging
 .Python
 build/

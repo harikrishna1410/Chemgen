@@ -30,12 +30,13 @@ def append_new_str(new_str,curr_line,lines):
     return curr_line,lines
 
 
-def calculate_nsp_per_block(max_sp):
-    nsp_per_block = 1
-    while nsp_per_block * 2 <= max_sp:
-        nsp_per_block *= 2
+#this function calculates the number of species per thread block
+#it is always a power of 2
+def calculate_possible_nsp_per_block(chem,nreact_per_block,veclen,threads_per_block_ulimit=256):
+    import math
+    max_sp = chem.find_max_specs(good_number=True)
+    ##max_sp is the maximum number of species per thread block so that nsp_per_thread > 0
+    ##we also need to make sure that nsp_per_block*nreact_per_block*veclen <= threads_per_block_ulimit
+    nsp_per_block = [2**i for i in range(0,int(math.log2(max_sp))+1) 
+                     if 2**i*nreact_per_block*veclen <= threads_per_block_ulimit]
     return nsp_per_block
-
-def calculate_nreact_per_block(nreact_mech):
-    # This is a placeholder implementation. You may need to adjust this based on your specific requirements.
-    return min(32, nreact_mech)
