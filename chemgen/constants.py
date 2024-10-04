@@ -32,6 +32,14 @@ __device__ __constant__ double coef_p_d[MAX_SP*NREACT_MECH];
 
 # Copy constants to device function
 COPY_CONSTANTS_TO_DEVICE_FUNC = """
+#ifdef HIP_CHEM_V3
+#include "constants_v3.h"
+#elif HIP_CHEM_V2
+#include "constants_v2.h"
+#elif HIP_CHEM_V1
+#include "constants_v1.h"
+#endif
+
 static inline void copyConstantsToDevice(const double* A_h,
                            const double* B_h,
                            const int* sk_map_h,
@@ -56,8 +64,8 @@ def get_header_content(chem: chemistry,
                        parallel_level=1,
                        nreact_per_block=DEFAULT_NREACT_PER_BLOCK):
     max_specs = chem.find_max_specs(parallel_level>2)
-    header_content = f"""#ifndef CONSTANTS_H
-#define CONSTANTS_H
+    header_content = f"""#ifndef CONSTANTS_V{parallel_level}_H
+#define CONSTANTS_V{parallel_level}_H
 #include "hip/hip_runtime.h"
 ///****************mechanism constants************************
 //number of reduced species
@@ -84,7 +92,7 @@ def get_header_content(chem: chemistry,
 #define MAX_THIRD_BODIES {chem.find_max_third_body()}
 //when using more v2 and v3 parallelisation
 //this had to divide all NREACT_* variables
-#define NREACT_PER_BLOCK {nreact_per_block} //number of reactions solved per thread block
+#define NREACT_PER_BLOCK {nreact_per_block if nreact_per_block is not None else DEFAULT_NREACT_PER_BLOCK} //number of reactions solved per thread block
 //this is used in v3 parallelisation
 //MAX_SP should be divisible by NSP_PER_THREAD when using v3 parallelisation
 //this is always some power of 2
@@ -100,9 +108,6 @@ const double SMALL = {SMALL}; //a small value
 const double PATM = {PATM}; //atmospheric pressure
 ///****************mechanism constants************************
 {CONSTANT_MEMORY_DECLARATIONS}
-
-{COPY_CONSTANTS_TO_DEVICE_FUNC}
-
 #endif
 """
     return header_content

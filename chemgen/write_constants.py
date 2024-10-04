@@ -2,7 +2,7 @@
 This script writes all the constants to a file.
 """
 
-from .constants import get_header_content, RU, SMALL, PATM
+from .constants import get_header_content, RU, SMALL, PATM, COPY_CONSTANTS_TO_DEVICE_FUNC
 from .writer_utils import *
 from .chemistry import chemistry
 import sys
@@ -137,7 +137,7 @@ def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_
                                         parallel_level,
                                         nreact_per_block)
     
-    with open(f"{dirname}/constants.h", "w") as f:
+    with open(f"{dirname}/constants_v{parallel_level}.h", "w") as f:
         f.write(header_content)
     
     if(parallel_level > 2):
@@ -147,6 +147,9 @@ def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_
                                                          veclen,
                                                          threads_per_block_ulimit=1024)
         print(f"Possible values of NSP_PER_BLOCK: {nsp_per_block}")
+    
+    with open(f"{dirname}/copy_constants.cpp", "w") as f:
+        f.write(COPY_CONSTANTS_TO_DEVICE_FUNC)
     return
 
 def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block=None):
@@ -154,8 +157,8 @@ def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block
     if parallel_level > 1:
         assert nreact_per_block is not None
     
-    with open(f"{dirname}/coef_m.f90", "w") as f:
-        f.write("module coef_m\n")
+    with open(f"{dirname}/coef_m_v{parallel_level}.f90", "w") as f:
+        f.write(f"module coef_m_v{parallel_level}\n")
         f.write("  implicit none\n\n")
         
         # Write Arrhenius constants
@@ -170,6 +173,6 @@ def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block
         coef_lines = write_coefficients(chem,parallel_level,nreact_per_block)
         f.writelines(coef_lines)
         
-        f.write("end module coef_m\n")
+        f.write(f"end module coef_m_v{parallel_level}\n")
     
     return
