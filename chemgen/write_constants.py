@@ -37,7 +37,7 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
     A_lines, B_lines, A0_troe_lines, B0_troe_lines = [], [], [], []
     nr_calc, nr_troe = 0, 0
 
-    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
         reactions = chem.get_reactions_by_type(reaction_type)
         if nreact_per_block is not None:
             if len(reactions)%nreact_per_block != 0:
@@ -70,7 +70,7 @@ def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
 
     sk_map, map_r, map_p = [], [], []
     
-    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
         reactions = chem.get_reactions_by_type(reaction_type)
         if nreact_per_block is not None:    
             if len(reactions)%nreact_per_block != 0:
@@ -89,6 +89,8 @@ def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
         curr_line = ""
         for m in map_data:
             curr_line, lines = append_new_str(f"{m},", curr_line, lines)
+        if(len(curr_line) > 0):
+            lines.append(curr_line[:-1]+"&\n")
         new_lines = add_new_array("integer", map_name, len(map_data), lines, new_lines)
     return new_lines
 
@@ -102,7 +104,7 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
 
     sk_coef, coef_r, coef_p = [], [], []
     
-    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
         reactions = chem.get_reactions_by_type(reaction_type)
         if nreact_per_block is not None:    
             if len(reactions)%nreact_per_block != 0:
@@ -119,6 +121,8 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
         curr_line = ""
         for c in coef_array:
             curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
+        if(len(curr_line) > 0):
+            lines.append(curr_line[:-1]+"&\n")
         new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
