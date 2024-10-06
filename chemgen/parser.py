@@ -6,7 +6,7 @@ import sympy as sp
 import cantera as ct
 import os
 import subprocess
-
+from pint import UnitRegistry
 
 """
     a ckparser class that has some simple parser functions also uses some 
@@ -16,8 +16,11 @@ import subprocess
 """
 
 class ckparser:
-    def __init__(self,parser="cantera"):
+    def __init__(self,parser="cantera",units="cgs",Ea_units="cal/mol"):
         ###
+        self.ureg = UnitRegistry(system=units)
+        self.units = units
+        self.Ea_units = Ea_units
         if(parser=="cantera"):
             self.parse_reactions = self.__cantera_reaction_parser
             self.parse_species = self.__cantera_species_parser
@@ -43,15 +46,12 @@ class ckparser:
                                 "three-body-Arrhenius": "third_body",
                                 "Arrhenius": "standard"
                                 }
+        
     @property
     def reaction_types(self):
         return self.__reaction_types
     
     def __cantera_reaction_parser(self, ck_file, therm_file=None):
-        import cantera as ct
-        import subprocess
-        import os
-
         # Check if YAML file already exists
         yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
         if not os.path.exists(yaml_file):
@@ -76,30 +76,44 @@ class ckparser:
             r_dict[idx]["dup"] = r.duplicate
             r_dict[idx]["reversible"] = r.reversible
             if r_dict[idx]["type"] == "troe":
-                r_dict[idx]["arh"] = (r.rate.high_rate.pre_exponential_factor, 
+                Ea_high = (r.rate.high_rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
+                A_high = self.__convert_A_to_base_units(r.rate.high_rate.pre_exponential_factor, "kmol/m**3", r.reactants)
+                r_dict[idx]["arh"] = (A_high, 
                                       r.rate.high_rate.temperature_exponent, 
-                                      r.rate.high_rate.activation_energy)
+                                      Ea_high)
+                Ea_low = (r.rate.low_rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
+                A_low = self.__convert_A_to_base_units(r.rate.low_rate.pre_exponential_factor, "kmol/m**3", r.reactants)
                 r_dict[idx]["troe"] = {
-                    "low": (r.rate.low_rate.pre_exponential_factor,
+                    "low": (A_low,
                             r.rate.low_rate.temperature_exponent,
-                            r.rate.low_rate.activation_energy),
+                            Ea_low),
                     "troe": tuple(r.rate.falloff_coeffs)
                 }
             elif r_dict[idx]["type"] == "third_body":
-                r_dict[idx]["arh"] = (r.rate.pre_exponential_factor, 
+                Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
+                A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, "kmol/m**3", r.reactants)
+                r_dict[idx]["arh"] = (A, 
                                       r.rate.temperature_exponent, 
-                                      r.rate.activation_energy)
+                                      Ea)
                 r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "standard":
-                r_dict[idx]["arh"] = (r.rate.pre_exponential_factor, 
+                Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
+                A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, "kmol/m**3", r.reactants)
+                r_dict[idx]["arh"] = (A, 
                                       r.rate.temperature_exponent, 
-                                      r.rate.activation_energy)
+                                      Ea)
             else:
                 continue
 
             idx += 1
             
         return r_dict
+        
+    def __convert_A_to_base_units(self, A, conc_units, reactants):
+        dim = sum(reactants.values())
+        conc_unit = self.ureg(conc_units)
+        A_with_units = A * conc_unit**(1-dim)
+        return A_with_units.to_base_units().magnitude
         
     def __cantera_species_parser(self, ck_file):
         yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
@@ -109,10 +123,10 @@ class ckparser:
         gas = ct.Solution(yaml_file)
         return [sp.name for sp in gas.species()]
 
-    def __cantera_thermo_parser(self, ck_file, therm_file=""):
+    def __cantera_thermo_parser(self, ck_file, therm_file=None):
         yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
         if not os.path.exists(yaml_file):
-            if(therm_file == ""):
+            if(therm_file is None):
                 subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
             else:
                 subprocess.run(['ck2yaml', '--input', ck_file, '--thermo', therm_file, '--output', yaml_file], check=True)
@@ -375,5 +389,3 @@ class ckparser:
         elem_line = self.__strip_parts(all_lines,"elements","end")
         elements = [i for l in elem_line for i in l.strip().replace("\t"," ").split(" ")]
         return elements
-
-

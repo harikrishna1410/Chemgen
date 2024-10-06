@@ -148,8 +148,8 @@ def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_
                                                          threads_per_block_ulimit=1024)
         print(f"Possible values of NSP_PER_BLOCK: {nsp_per_block}")
     
-    with open(f"{dirname}/copy_constants.cpp", "w") as f:
-        f.write(COPY_CONSTANTS_TO_DEVICE_FUNC)
+    # with open(f"{dirname}/copy_constants.cpp", "w") as f:
+    #     f.write(COPY_CONSTANTS_TO_DEVICE_FUNC)
     return
 
 def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block=None):

@@ -62,7 +62,7 @@ description: |-
 generator: ck2yaml
 input-files: [chem_without_CO_CO2_AR_HE.inp]
 cantera-version: 3.0.1
-date: Thu, 03 Oct 2024 15:24:31 +1000
+date: Sat, 05 Oct 2024 17:40:05 +1000
 
 units: {length: cm, time: s, quantity: mol, activation-energy: cal/mol}
 

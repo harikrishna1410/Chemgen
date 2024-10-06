@@ -1,4 +1,5 @@
 from .chemistry import chemistry
+from pint import UnitRegistry
 
 # Universal constants
 RU = 8.31451e7  # universal gas constant
@@ -32,14 +33,6 @@ __device__ __constant__ double coef_p_d[MAX_SP*NREACT_MECH];
 
 # Copy constants to device function
 COPY_CONSTANTS_TO_DEVICE_FUNC = """
-#ifdef HIP_CHEM_V3
-#include "constants_v3.h"
-#elif HIP_CHEM_V2
-#include "constants_v2.h"
-#elif HIP_CHEM_V1
-#include "constants_v1.h"
-#endif
-
 static inline void copyConstantsToDevice(const double* A_h,
                            const double* B_h,
                            const int* sk_map_h,
@@ -108,6 +101,8 @@ const double SMALL = {SMALL}; //a small value
 const double PATM = {PATM}; //atmospheric pressure
 ///****************mechanism constants************************
 {CONSTANT_MEMORY_DECLARATIONS}
+
+{COPY_CONSTANTS_TO_DEVICE_FUNC}
 #endif
 """
     return header_content

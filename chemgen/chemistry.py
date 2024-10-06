@@ -16,7 +16,7 @@ import math
 """
 
 class chemistry:
-    def __init__(self, ck_file, therm_file, parser, build_graph=False,qssa_species=[]):
+    def __init__(self, ck_file, parser, therm_file=None, build_graph=False,qssa_species=[]):
         
         assert isinstance(parser, ckparser)
 
