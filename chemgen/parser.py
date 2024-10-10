@@ -89,6 +89,7 @@ class ckparser:
                             Ea_low),
                     "troe": tuple(r.rate.falloff_coeffs)
                 }
+                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "third_body":
                 Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
                 A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, "kmol/m**3", r.reactants)
@@ -121,7 +122,7 @@ class ckparser:
             subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
         
         gas = ct.Solution(yaml_file)
-        return [sp.name for sp in gas.species()]
+        return [sp.name for sp in gas.species()],{sp.name:sp for sp in gas.species()}
 
     def __cantera_thermo_parser(self, ck_file, therm_file=None):
         yaml_file = os.path.splitext(ck_file)[0] + '.yaml'

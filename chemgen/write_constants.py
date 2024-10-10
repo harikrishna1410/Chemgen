@@ -42,7 +42,9 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
         if nreact_per_block is not None:
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
+                    print("padding mech",i)
                     chem.add_dummy_reaction(reaction_type)
+        reactions = chem.get_reactions_by_type(reaction_type)
         nr, A, B = get_arh_coef_lines(reactions)
         A_lines.extend(A)
         B_lines.extend(B)
@@ -76,6 +78,7 @@ def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
                     chem.add_dummy_reaction(reaction_type)
+        reactions = chem.get_reactions_by_type(reaction_type)
         for reaction in reactions.values():
             for species_list, map_list in [(reaction['reacts'], map_r), (reaction['prods'], map_p)]:
                 sk_map.extend([chem.species_index(s) for s in species_list])
@@ -110,6 +113,7 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
                     chem.add_dummy_reaction(reaction_type)
+        reactions = chem.get_reactions_by_type(reaction_type)
         for reaction in reactions.values():
             for coef_list, species_dict, sign in [(sk_coef, reaction['reacts'], -1), (sk_coef, reaction['prods'], 1),
                                                   (coef_r, reaction['reacts'], 1), (coef_p, reaction['prods'], 1)]:
