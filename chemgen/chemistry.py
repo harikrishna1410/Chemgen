@@ -298,41 +298,44 @@ class chemistry_expressions:
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
         elif reaction["type"] == "plog":
-            c1 = reaction["plog"][0]
-            expr[f"if P < {c1[0]:.15e}:"] = [] 
-            expr[f"if P < {c1[0]:.15e}:"].append(f"    kfl={c1[1]:.15e}" \
-                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
-                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
-            expr[f"if P < {c1[0]:.15e}:"].append(f"    kfh={c1[1]:.15e}" \
-                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
-                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+            # First pass to identify and sum duplicate pressure points
+            pressure_points = {}
+            for c in reaction['plog']:
+                if c[0] not in pressure_points:
+                    pressure_points[c[0]] = []
+                pressure_points[c[0]].append(c)
 
-            expr[f"if P < {c1[0]:.15e}:"].append(f"    logPl=1.0")
-            expr[f"if P < {c1[0]:.15e}:"].append(f"    logPh={np.log(c1[0]):.15e}")
+            # Build kf strings for each unique pressure point
+            kf_strings = {}
+            for pressure, conditions in pressure_points.items():
+                kf_sum = " + ".join([f"{c[1]:.15e}" + (f" * (T ** {c[2]})" if abs(c[2]) > 0.0 else "") + f" * np.exp({-c[3]:.15e} / (Rc * T))" for c in conditions])
+                kf_strings[pressure] = kf_sum
 
-            for c1,c2 in zip(reaction['plog'][0:-1],reaction["plog"][1:]):
-                if(c1[0] == c2[0]):
-                    continue
-                expr[f"elif P < {c2[0]:.15e}:"] = [] 
-                expr[f"elif P < {c2[0]:.15e}:"].append(f"    kfl={c1[1]:.15e}" \
-                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
-                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
-                expr[f"elif P < {c2[0]:.15e}:"].append(f"    kfh={c2[1]:.15e}" \
-                    + (f" * (T ** {c2[2]})" if abs(c2[2]) > 0.0 else "") \
-                    + f" * np.exp({-c2[3]:.15e} / (Rc * T))")
-                expr[f"elif P < {c2[0]:.15e}:"].append(f"    logPl={np.log(c1[0]):.15e}")
-                expr[f"elif P < {c2[0]:.15e}:"].append(f"    logPh={np.log(c2[0]):.15e}")
+            # Sort pressure points
+            sorted_pressures = sorted(pressure_points.keys())
+
+            # Build expressions using the summed kf strings
+            expr = {}
+            for i, p in enumerate(sorted_pressures):
+                if i == 0:
+                    expr[f"if P < {p:.15e}:"] = []
+                    expr[f"if P < {p:.15e}:"].append(f"    kfl={kf_strings[p]}")
+                    expr[f"if P < {p:.15e}:"].append(f"    kfh={kf_strings[p]}")
+                    expr[f"if P < {p:.15e}:"].append(f"    logPl=1.0")
+                    expr[f"if P < {p:.15e}:"].append(f"    logPh={np.log(p):.15e}")
+                elif i < len(sorted_pressures) - 1:
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"] = []
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfl={kf_strings[p]}")
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfh={kf_strings[sorted_pressures[i+1]]}")
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPl={np.log(p):.15e}")
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPh={np.log(sorted_pressures[i+1]):.15e}")
+
             expr["else:"] = []
-            c1 = reaction["plog"][-1]
-            expr[f"else:"].append(f"    kfl={c1[1]:.15e}" \
-                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
-                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
-            expr[f"else:"].append(f"    kfh={c1[1]:.15e}" \
-                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
-                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
-
-            expr[f"else:"].append(f"    logPl={np.log(c1[0]):.15e}")
-            expr[f"else:"].append(f"    logPh=100.0")
+            last_p = sorted_pressures[-1]
+            expr["else:"].append(f"    kfl={kf_strings[last_p]}")
+            expr["else:"].append(f"    kfh={kf_strings[last_p]}")
+            expr["else:"].append(f"    logPl={np.log(last_p):.15e}")
+            expr["else:"].append(f"    logPh=100.0")
 
             expr["else:"].append("kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))")
             expr["else:"].append(f"kb = kf * ({eqk})" if reaction['reversible'] else "0")
