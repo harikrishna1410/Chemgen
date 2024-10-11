@@ -82,7 +82,10 @@ class ckparser:
                                       r.rate.high_rate.temperature_exponent, 
                                       Ea_high)
                 Ea_low = (r.rate.low_rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
-                A_low = self.__convert_A_to_base_units(r.rate.low_rate.pre_exponential_factor, "kmol/m**3", r.reactants)
+                A_low = self.__convert_A_to_base_units(r.rate.low_rate.pre_exponential_factor, 
+                                                        "kmol/m**3", 
+                                                        r.reactants,
+                                                        type="troe")
                 r_dict[idx]["troe"] = {
                     "low": (A_low,
                             r.rate.low_rate.temperature_exponent,
@@ -92,10 +95,28 @@ class ckparser:
                 r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "third_body":
                 Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
-                A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, "kmol/m**3", r.reactants)
+                A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, 
+                                                    "kmol/m**3", 
+                                                    r.reactants,
+                                                    type="third_body")
                 r_dict[idx]["arh"] = (A, 
                                       r.rate.temperature_exponent, 
                                       Ea)
+                if("M" not in r_dict[idx]["eqn"]):
+                    r_dict[idx]["type"] = "standard"
+                    print(f"changed the reaction type of %s to standard"%(r_dict[idx]["eqn"]))
+                    if(len(r.reactants.keys()) != len(r_dict[idx]["eqn"].split("=")[0].split("+"))):
+                        reacts_eqn = [i.strip() for i in r_dict[idx]["eqn"].replace("<=>","=").replace("=>","=").split("=")[0].split("+")]
+                        for s in reacts_eqn:
+                            r_dict[idx]["reacts"][s] = reacts_eqn.count(s)
+                    if(len(r.products.keys()) != len(r_dict[idx]["eqn"].split("=")[1].split("+"))):
+                        prods_eqn = [i.strip() for i in r_dict[idx]["eqn"].replace("<=>","=").replace("=>","=").split("=")[1].split("+")]
+                        print(prods_eqn)
+                        for s in prods_eqn:
+                            r_dict[idx]["prods"][s] = prods_eqn.count(s)
+
+                    idx += 1
+                    continue
                 r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "standard":
                 Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
@@ -110,10 +131,13 @@ class ckparser:
             
         return r_dict
         
-    def __convert_A_to_base_units(self, A, conc_units, reactants):
+    def __convert_A_to_base_units(self, A, conc_units, reactants,type="standard"):
         dim = sum(reactants.values())
         conc_unit = self.ureg(conc_units)
-        A_with_units = A * conc_unit**(1-dim)
+        if type == "third_body" or type == "troe":
+            A_with_units = A * conc_unit**(-dim)
+        else:
+            A_with_units = A * conc_unit**(1-dim)
         return A_with_units.to_base_units().magnitude
         
     def __cantera_species_parser(self, ck_file):

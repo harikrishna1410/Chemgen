@@ -203,7 +203,7 @@ class chemistry_expressions:
             # s-h expression from chemkin low polynomial
             smh_low = [
                 f"    {low[6]-low[0]:.15e}\\",
-                f"    {'+' if low[0] >= 0 else '-'} {abs(low[0]):.15e} * log(T)\\",
+                f"    {'+' if low[0] >= 0 else '-'} {abs(low[0]):.15e} * np.log(T)\\",
                 f"    {'+' if low[1] >= 0 else '-'} {abs(low[1]/2.0):.15e} * T\\",
                 f"    {'+' if low[2] >= 0 else '-'} {abs(low[2]/6.0):.15e} * T**2\\",
                 f"    {'+' if low[3] >= 0 else '-'} {abs(low[3]/12.0):.15e} * T**3\\",
@@ -215,7 +215,7 @@ class chemistry_expressions:
             self.exp_g_expr[sp_name].append("else:")
             smh_high = [
                 f"    {high[6]-high[0]:.15e}\\",
-                f"    {'+' if high[0] >= 0 else '-'} {abs(high[0]):.15e} * log(T)\\",
+                f"    {'+' if high[0] >= 0 else '-'} {abs(high[0]):.15e} * np.log(T)\\",
                 f"    {'+' if high[1] >= 0 else '-'} {abs(high[1]/2.0):.15e} * T\\",
                 f"    {'+' if high[2] >= 0 else '-'} {abs(high[2]/6.0):.15e} * T**2\\",
                 f"    {'+' if high[3] >= 0 else '-'} {abs(high[3]/12.0):.15e} * T**3\\",
@@ -255,14 +255,15 @@ class chemistry_expressions:
         
         expr = {}
         A, beta, Ea = reaction['arh']
-        expr["kf"] = f"{A:.15e}" \
+        
+        if reaction["type"] != "troe":
+            expr["kf"] = f"{A:.15e}" \
                     + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
-                    + f" * np.exp(-{Ea:.15e} / (Rc * T))"
-        expr["kb"] = f"kf / ({eqk})" if reaction['reversible'] else "0"
+                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
+            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
         
         if reaction["type"] == "third_body":
-            print(reaction["third_body"].items(),reaction["eqn"])
-            expr["rr"] = f"(ctot +" \
+            expr["rr"] = f"(ctot " + ("+" if len(reaction["third_body"]) > 0 else "") \
                         + "+".join([f"{eff:.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
                          + f")*(kf * ({reactants_expr}) - kb * ({products_expr}))"
         elif reaction["type"] == "troe":
@@ -276,16 +277,19 @@ class chemistry_expressions:
             expr["k0"] = f"{A0:.15e}" \
                         + (f" * (T ** {beta0})" if abs(beta0) > 0.0 else "") \
                         + f" * np.exp(-{Ea0:.15e} / (Rc * T))"
-            expr["kinf"] = expr["kf"]
+            expr["kinf"] = f"{A:.15e}" \
+                    + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
+                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["Pr"] = f"(k0 * M) / kinf"
             expr["Fcent"] = f"(1-{a}) * np.exp(-T/{T3}) + {a} * np.exp(-T/{T1})"
             if T2 > 0:
                 expr["Fcent"] += f" + np.exp(-{T2}/T)"
-            expr["C"] = f"-0.4 - 0.67 * np.log10(Fcent)"
+            expr["C1"] = f"-0.4 - 0.67 * np.log10(Fcent)"
             expr["N"] = f"0.75 - 1.27 * np.log10(Fcent)"
-            expr["F1"] = f"(np.log10(Pr) + C) / (N - 0.14 * (np.log10(Pr) + C))"
+            expr["F1"] = f"(np.log10(Pr) + C1) / (N - 0.14 * (np.log10(Pr) + C1))"
             expr["F"] = f"10 ** (np.log10(Fcent) / (1 + F1**2))"
             expr["kf"] = f"kinf * (Pr / (1 + Pr)) * F"
+            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
         else:    
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
@@ -302,14 +306,14 @@ class chemistry_expressions:
                                 for species, coeff in reactants_dict.items()])
         products = " * ".join([f"EG[{self.chem.species_index(species)}]" + (f"**{coeff}" if coeff > 1.0 else "")
                                for species, coeff in products_dict.items()])
-        if(abs(len(products_dict)-len(reactants_dict)) > 0):
-            if(len(products_dict)-len(reactants_dict) == 1):
+        if(abs(sum(products_dict.values())-sum(reactants_dict.values())) > 0):
+            if(sum(products_dict.values())-sum(reactants_dict.values()) == 1):
                 pfac = f"* pfac"
             else:
-                pfac = f"* pfac**{len(products_dict)-len(reactants_dict):0.1f}"
+                pfac = f"* pfac**{sum(products_dict.values())-sum(reactants_dict.values()):0.1f}"
         else:
             pfac = ""
-        return f"(({products}{pfac})/({reactants}))"
+        return f"(({reactants})/({products}{pfac}))"
 
     def get_reaction_expression(self, reaction_number):
         return self.reaction_expressions[reaction_number]
@@ -498,7 +502,7 @@ class chemistry_expressions:
     def write_python_header(self, f):
         f.write("import numpy as np\n\n")
         if self.vec:
-            f.write("def getrates(veclen, T, Y, P):\n")
+            f.write("def getrates(veclen, T, Y, P, wdot):\n")
             f.write(f"    C = np.zeros((veclen, {self.chem.n_species_red}))\n")
             f.write(f"    EG = np.zeros((veclen, {self.chem.n_species_sk}))\n")
             f.write("    kf = np.zeros(veclen)\n")
@@ -516,8 +520,9 @@ class chemistry_expressions:
             f.write("    F = np.zeros(veclen)\n")
             f.write("    logPr = np.zeros(veclen)\n")
             f.write("    logFcent = np.zeros(veclen)\n")
+            f.write("    wdot[:,:] = 0.0\n")
         else:
-            f.write("def getrates(T, Y, P):\n")
+            f.write("def getrates(T, Y, P, wdot):\n")
             f.write(f"    C = np.zeros({self.chem.n_species_red})\n")
             f.write(f"    EG = np.zeros({self.chem.n_species_sk})\n")
             f.write("    kf = 0.0\n")
@@ -535,11 +540,13 @@ class chemistry_expressions:
             f.write("    F = 0.0\n")
             f.write("    logPr = 0.0\n")
             f.write("    logFcent = 0.0\n")
+            f.write("    wdot[:] = 0.0\n")
         f.write(f"    Rc = {self.Rc}\n")
         f.write(f"    R0 = {self.R0}\n")
         f.write(f"    Patm = {self.Patm}\n")
         f.write("\n")
         f.write(f"    pfac = Patm/(R0*T)\n")
+        
 
     def write_fortran_header(self, f):
         if self.vec:
