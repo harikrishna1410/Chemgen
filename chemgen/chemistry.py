@@ -254,19 +254,18 @@ class chemistry_expressions:
         eqk = self.create_equilibrium_expression(reaction["reacts"], reaction["prods"])
         
         expr = {}
-        A, beta, Ea = reaction['arh']
         
-        if reaction["type"] != "troe":
+        if reaction["type"] == "third_body":
+            A, beta, Ea = reaction['arh']
             expr["kf"] = f"{A:.15e}" \
                     + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
                     + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
-        
-        if reaction["type"] == "third_body":
             expr["rr"] = f"(ctot " + ("+" if len(reaction["third_body"]) > 0 else "") \
                         + "+".join([f"{eff:.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
                          + f")*(kf * ({reactants_expr}) - kb * ({products_expr}))"
         elif reaction["type"] == "troe":
+            A, beta, Ea = reaction['arh']
             A0, beta0, Ea0 = reaction['troe']['low']
             troe_params = reaction['troe']['troe']
             a, T3, T1 = troe_params[:3]
@@ -291,8 +290,53 @@ class chemistry_expressions:
             expr["kf"] = f"kinf * (Pr / (1 + Pr)) * F"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
-        else:    
+        elif reaction["type"] == "standard":    
+            A, beta, Ea = reaction['arh']
+            expr["kf"] = f"{A:.15e}" \
+                    + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
+                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
+            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
+        elif reaction["type"] == "plog":
+            c1 = reaction["plog"][0]
+            expr[f"if P < {c1[0]:.15e}:"] = [] 
+            expr[f"if P < {c1[0]:.15e}:"].append(f"    kfl={c1[1]:.15e}" \
+                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
+                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+            expr[f"if P < {c1[0]:.15e}:"].append(f"    kfh={c1[1]:.15e}" \
+                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
+                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+
+            expr[f"if P < {c1[0]:.15e}:"].append(f"    logPl=1.0")
+            expr[f"if P < {c1[0]:.15e}:"].append(f"    logPh={np.log(c1[0]):.15e}")
+
+            for c1,c2 in zip(reaction['plog'][0:-1],reaction["plog"][1:]):
+                if(c1[0] == c2[0]):
+                    continue
+                expr[f"elif P < {c2[0]:.15e}:"] = [] 
+                expr[f"elif P < {c2[0]:.15e}:"].append(f"    kfl={c1[1]:.15e}" \
+                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
+                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+                expr[f"elif P < {c2[0]:.15e}:"].append(f"    kfh={c2[1]:.15e}" \
+                    + (f" * (T ** {c2[2]})" if abs(c2[2]) > 0.0 else "") \
+                    + f" * np.exp({-c2[3]:.15e} / (Rc * T))")
+                expr[f"elif P < {c2[0]:.15e}:"].append(f"    logPl={np.log(c1[0]):.15e}")
+                expr[f"elif P < {c2[0]:.15e}:"].append(f"    logPh={np.log(c2[0]):.15e}")
+            expr["else:"] = []
+            c1 = reaction["plog"][-1]
+            expr[f"else:"].append(f"    kfl={c1[1]:.15e}" \
+                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
+                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+            expr[f"else:"].append(f"    kfh={c1[1]:.15e}" \
+                    + (f" * (T ** {c1[2]})" if abs(c1[2]) > 0.0 else "") \
+                    + f" * np.exp({-c1[3]:.15e} / (Rc * T))")
+
+            expr[f"else:"].append(f"    logPl={np.log(c1[0]):.15e}")
+            expr[f"else:"].append(f"    logPh=100.0")
+
+            expr["else:"].append("kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))")
+            expr["else:"].append(f"kb = kf * ({eqk})" if reaction['reversible'] else "0")
+            expr["else:"].append(f"rr = kf * ({reactants_expr}) - kb * ({products_expr})")
         
         expr["wdot"] = self.get_species_production_rate(reaction_number, reaction)
         return expr
@@ -333,21 +377,25 @@ class chemistry_expressions:
         return wdot_expressions
 
     def vectorize_expressions(self):
-        vector_vars = ['T', 'C', 'EG', 'kf', 'kb', 'rr', 'wdot', 'Y', "ctot"]
+        vector_vars = ['T', 'C', 'EG', 'kf', 'kb', 'rr', 'wdot', 'Y', "ctot", "P"]
 
         # Vectorize reaction expressions
         for reaction_number, reaction_expr in self.reaction_expressions.items():
             vectorized_expr = {}
             
-            for key, expr in reaction_expr.items():
-                vectorized = expr
-                if key == "wdot":
-                    vectorized = [self.vectorize_wdot_expr(expr) for expr in vectorized]
-                else:
-                    for var in vector_vars:
-                        vec_var = f"{var}"
-                        vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
-                vectorized_expr[key] = vectorized
+            if self.chem.reactions[reaction_number]['type'] == 'plog':
+                vectorized_expr = self.vectorize_plog_reaction(reaction_expr, vector_vars)
+            else:
+                for key, expr in reaction_expr.items():
+                    if key == "wdot":
+                        vectorized = [self.vectorize_wdot_expr(expr) for expr in expr]
+                    else:
+                        vectorized = expr
+                        for var in vector_vars:
+                            vec_var = f"{var}"
+                            vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
+                    
+                    vectorized_expr[key] = vectorized
             
             self.reaction_expressions[reaction_number] = vectorized_expr
 
@@ -360,6 +408,7 @@ class chemistry_expressions:
                 vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
             vectorized_ytoc.append(vectorized)
         self.ytoc_expr = vectorized_ytoc
+
         # Vectorize exp_g expressions
         for sp_name in self.chem.species:
             vectorized_exp_g = ["for i in range(veclen):"]
@@ -369,7 +418,30 @@ class chemistry_expressions:
                 indented_expr = re.sub(r'EG\[(\d+)\]', r'EG[i,\1]', indented_expr)
                 vectorized_exp_g.append(indented_expr)
             self.exp_g_expr[sp_name] = vectorized_exp_g
+
+    def vectorize_plog_reaction(self, reaction_expr, vector_vars):
+        vectorized_expr = {}
         
+        for key, expr in reaction_expr.items():
+            if key.startswith("if") or key.startswith("elif") or key == "else:":
+                vectorized = ["for i in range(veclen):"]
+                for line in expr:
+                    vectorized_line = "    " + line
+                    for var in vector_vars:
+                        vectorized_line = vectorized_line.replace(f"{var}", f"{var}[i]")
+                    vectorized.append(vectorized_line)
+                vectorized_expr[key] = vectorized
+            elif key == "wdot":
+                vectorized = [self.vectorize_wdot_expr(expr) for expr in expr]
+                vectorized_expr[key] = vectorized
+            else:
+                vectorized = expr
+                for var in vector_vars:
+                    vec_var = f"{var}"
+                    vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
+                vectorized_expr[key] = vectorized
+        
+        return vectorized_expr
 
     def vectorize_wdot_expr(self, expr):
         return expr.replace("wdot[", "wdot[:,").replace("rr", "rr[:]")
@@ -431,6 +503,7 @@ class chemistry_expressions:
                 return f"(:,{index + 1}"
 
             expr = re.sub(r'\(:,(\d+)', increment_colon_index, expr)
+            
             return expr
 
     def write_expressions_to_file(self, filename):
@@ -481,13 +554,16 @@ class chemistry_expressions:
                         f.write(f"    {self.format_expression(expr)}\n")
                         i += 1
                 f.write("\n")
-            #
+            
             for reaction_number, reaction_expr in self.reaction_expressions.items():
                 f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
                 
-                for expr_type in reaction_expr.keys():
-                    if(expr_type != "wdot"):
-                        f.write(f"    {expr_type} = {self.format_expression(reaction_expr[expr_type])}\n")
+                if self.chem.reactions[reaction_number]['type'] == 'plog':
+                    self.write_plog_reaction(f, reaction_expr)
+                else:
+                    for expr_type in reaction_expr.keys():
+                        if expr_type != "wdot":
+                            f.write(f"    {expr_type} = {self.format_expression(reaction_expr[expr_type])}\n")
                 for wdot_expr in reaction_expr['wdot']:
                     f.write(f"    {self.format_expression(wdot_expr)}\n")
                 f.write("\n")
@@ -498,6 +574,17 @@ class chemistry_expressions:
                 f.write("end subroutine getrates\n")
 
         print(f"Expressions and getrates function written to {filename}")
+
+    def write_plog_reaction(self, f, reaction_expr):
+        for key, expr_list in reaction_expr.items():
+            if key.startswith("if") or key.startswith("elif") or key == "else:":
+                f.write(f"    {self.format_expression(key)}\n")
+                for expr in expr_list:
+                    if("logP" in expr):
+                        print(expr)
+                    f.write(f"    {self.format_expression(expr)}\n")
+            elif key != "wdot":
+                f.write(f"    {key} = {self.format_expression(expr_list)}\n")
 
     def write_python_header(self, f):
         f.write("import numpy as np\n\n")

@@ -39,12 +39,13 @@ class ckparser:
         self.__elem_wt["N"] = 1.400669956207276E1
 
         ##supported reaction types
-        self.__reaction_types = ["standard","troe","third_body"]
+        self.__reaction_types = ["standard","troe","third_body","plog"]
         ##cantera reaction types to my reaction types
         self.__ct_to_ckp_type = {
                                 "falloff-Troe": "troe",
                                 "three-body-Arrhenius": "third_body",
-                                "Arrhenius": "standard"
+                                "Arrhenius": "standard",
+                                "pressure-dependent-Arrhenius":"plog"
                                 }
         
     @property
@@ -105,16 +106,25 @@ class ckparser:
                 if("M" not in r_dict[idx]["eqn"]):
                     r_dict[idx]["type"] = "standard"
                     print(f"changed the reaction type of %s to standard"%(r_dict[idx]["eqn"]))
-                    if(len(r.reactants.keys()) != len(r_dict[idx]["eqn"].split("=")[0].split("+"))):
-                        reacts_eqn = [i.strip() for i in r_dict[idx]["eqn"].replace("<=>","=").replace("=>","=").split("=")[0].split("+")]
-                        for s in reacts_eqn:
-                            r_dict[idx]["reacts"][s] = reacts_eqn.count(s)
-                    if(len(r.products.keys()) != len(r_dict[idx]["eqn"].split("=")[1].split("+"))):
-                        prods_eqn = [i.strip() for i in r_dict[idx]["eqn"].replace("<=>","=").replace("=>","=").split("=")[1].split("+")]
-                        print(prods_eqn)
-                        for s in prods_eqn:
-                            r_dict[idx]["prods"][s] = prods_eqn.count(s)
-
+                    r_dict[idx]["reacts"] = {}
+                    r_dict[idx]["prods"] = {}
+                    reacts_eqn, prods_eqn = r_dict[idx]["eqn"].replace("<=>","=").replace("=>","=").split("=")
+                    reacts_eqn = [i.strip() for i in reacts_eqn.split("+")]
+                    prods_eqn = [i.strip() for i in prods_eqn.split("+")]
+                    
+                    for side, species_list in [("reacts", reacts_eqn), ("prods", prods_eqn)]:
+                        for s in species_list:
+                            match = re.match(r'^(\d*\.?\d*)(.+)$', s.strip())
+                            if match:
+                                coeff = float(match.group(1)) if match.group(1) else 1.0
+                                species = match.group(2)
+                            else:
+                                coeff = 1.0
+                                species = s.strip()
+                            if species in r_dict[idx][side]:
+                                r_dict[idx][side][species.strip()] += coeff
+                            else:
+                                r_dict[idx][side][species.strip()] = coeff                    
                     idx += 1
                     continue
                 r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
@@ -124,11 +134,18 @@ class ckparser:
                 r_dict[idx]["arh"] = (A, 
                                       r.rate.temperature_exponent, 
                                       Ea)
+            elif r_dict[idx]["type"] == "plog":
+                r_dict[idx]["plog"] = []
+                for rate in r.rate.rates:
+                    pressure = (rate[0] * self.ureg.N/self.ureg.m**2).to_base_units().magnitude
+                    A = self.__convert_A_to_base_units(rate[1].pre_exponential_factor, "kmol/m**3", r.reactants)
+                    n = rate[1].temperature_exponent
+                    Ea = (rate[1].activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
+                    r_dict[idx]["plog"].append((pressure, A, n, Ea))
             else:
                 continue
 
             idx += 1
-            
         return r_dict
         
     def __convert_A_to_base_units(self, A, conc_units, reactants,type="standard"):

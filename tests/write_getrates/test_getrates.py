@@ -8,7 +8,7 @@ T = 1200  # K
 P = ct.one_atm  # 1 atm
 
 # Create gas object
-gas = ct.Solution('H2_burke.yaml')
+gas = ct.Solution('CH4_NUI_sk50.yaml')
 
 # Set the gas state
 gas.set_equivalence_ratio(phi, 'H2', 'O2:1.0, N2:3.76')
