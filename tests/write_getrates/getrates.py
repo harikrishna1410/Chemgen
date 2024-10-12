@@ -7,20 +7,27 @@ def getrates(T, Y, P, wdot):
     kb = 0.0
     rr = 0.0
     ctot = 0.0
+    M = 0.0
     k0 = 0.0
     kinf = 0.0
     Pr = 0.0
     Fcent = 0.0
-    C_troe = 0.0
-    N_troe = 0.0
+    C1 = 0.0
+    N = 0.0
     F1 = 0.0
     F = 0.0
     logPr = 0.0
     logFcent = 0.0
+    smh = 0.0
     wdot[:] = 0.0
     Rc = 1.9872155832
     R0 = 83145100.0
     Patm = 1013250.0
+    kfl = 0.0
+    kfh = 0.0
+    kbl = 0.0
+    logPl = 0.0
+    logPh = 0.0
 
     pfac = Patm/(R0*T)
     # Y to C conversion

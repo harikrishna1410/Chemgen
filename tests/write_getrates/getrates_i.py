@@ -7,20 +7,27 @@ def getrates(veclen, T, Y, P, wdot):
     kb = np.zeros(veclen)
     rr = np.zeros(veclen)
     ctot = np.zeros(veclen)
+    M = np.zeros(veclen)
     k0 = np.zeros(veclen)
     kinf = np.zeros(veclen)
     Pr = np.zeros(veclen)
     Fcent = np.zeros(veclen)
-    C_troe = np.zeros(veclen)
-    N_troe = np.zeros(veclen)
+    C1 = np.zeros(veclen)
+    N = np.zeros(veclen)
     F1 = np.zeros(veclen)
     F = np.zeros(veclen)
     logPr = np.zeros(veclen)
     logFcent = np.zeros(veclen)
+    smh = np.zeros(veclen)
     wdot[:,:] = 0.0
     Rc = 1.9872155832
     R0 = 83145100.0
     Patm = 1013250.0
+    kfl = 0.0
+    kfh = 0.0
+    kbl = 0.0
+    logPl = 0.0
+    logPh = 0.0
 
     pfac = Patm/(R0*T)
     # Y to C conversion

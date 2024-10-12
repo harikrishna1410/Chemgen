@@ -1,6 +1,6 @@
 import numpy as np
 import cantera as ct
-from getrates import getrates
+from getrates_i import getrates
 
 # Set up initial conditions
 phi = 1.0
@@ -37,10 +37,14 @@ custom_wdot = []
 cantera_wdot.append(gas.net_production_rates)
 Y = gas.Y
 print(Y)
-wdot = np.zeros_like(Y)
+
 P_cgs = P * 10  # Convert from Pa to dyne/cm^2
-kf, kb, rr = getrates(T, Y, P_cgs, wdot)
-custom_wdot.append(wdot)
+veclen = 10
+wdot = np.zeros((veclen,gas.n_species))
+kf, kb, rr = getrates(veclen,np.array([T]*veclen), np.stack([Y]*veclen,axis=0), np.array([P_cgs]*veclen), wdot)
+
+print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
+custom_wdot.append(wdot[0].ravel())
 
 # cantera_wdot.append(gas.net_production_rates)
 # # Run simulation

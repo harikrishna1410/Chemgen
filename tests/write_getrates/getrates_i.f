@@ -8,12 +8,14 @@ subroutine getrates(veclen, T, Y, P, wdot)
     real(kind=8), dimension(veclen, 50) :: EG
     real(kind=8), dimension(veclen) :: kf, kb
     real(kind=8), dimension(veclen) :: rr, ctot, pfac
+    real(kind=8), dimension(veclen) :: M, smh
     real(kind=8), dimension(veclen) :: k0, kinf, Pr, Fcent
-    real(kind=8), dimension(veclen) :: C_troe, N_troe, F1, F
+    real(kind=8), dimension(veclen) :: C1, N, F1, F
     real(kind=8), dimension(veclen) :: logPr, logFcent
     real(kind=8), parameter :: Rc = 1.9872155832
     real(kind=8), parameter :: R0 = 83145100.0
     real(kind=8), parameter :: Patm = 1013250.0
+    real(kind=8) :: kfl, kfh, kbl, logPl, logPh
     integer :: i
 
     pfac = Patm / (R0 * T)

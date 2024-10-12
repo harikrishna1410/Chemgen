@@ -7,12 +7,14 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     real(kind=8), dimension(50) :: EG
     real(kind=8) :: kf, kb
     real(kind=8) :: rr, ctot, pfac
+    real(kind=8) :: M, smh
     real(kind=8) :: k0, kinf, Pr, Fcent
-    real(kind=8) :: C_troe, N_troe, F1, F
+    real(kind=8) :: C1, N, F1, F
     real(kind=8) :: logPr, logFcent
     real(kind=8), parameter :: Rc = 1.9872155832
     real(kind=8), parameter :: R0 = 83145100.0
     real(kind=8), parameter :: Patm = 1013250.0
+    real(kind=8) :: kfl, kfh, kbl, logPl, logPh
     integer :: i
 
     pfac = Patm / (R0 * T)
