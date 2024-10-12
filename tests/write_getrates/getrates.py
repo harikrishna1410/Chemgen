@@ -3504,7 +3504,7 @@ def getrates(T, Y, P, wdot):
         logPl=1.843384373047865e+01
         logPh=100.0
     kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C[27] * C[2]) - kb * (C[21] * C[8] * C[1])
     wdot[27] = wdot[27] - rr
     wdot[2] = wdot[2] - rr
@@ -3793,7 +3793,7 @@ def getrates(T, Y, P, wdot):
         logPl=1.843384373047865e+01
         logPh=100.0
     kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C[28] * C[7]) - kb * (C[21] * C[8] * C[1])
     wdot[28] = wdot[28] - rr
     wdot[7] = wdot[7] - rr
@@ -3905,7 +3905,7 @@ def getrates(T, Y, P, wdot):
         logPl=1.843384373047865e+01
         logPh=100.0
     kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C[29] * C[5]) - kb * (C[13] * C[9])
     wdot[29] = wdot[29] - rr
     wdot[5] = wdot[5] - rr

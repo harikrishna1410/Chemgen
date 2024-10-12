@@ -318,28 +318,28 @@ class chemistry_expressions:
             expr = {}
             for i, p in enumerate(sorted_pressures):
                 if i == 0:
-                    expr[f"if P < {p:.15e}:"] = []
+                    expr[f"if P < {p:.15e}:"] = [f"if P < {p:.15e}:"]
                     expr[f"if P < {p:.15e}:"].append(f"    kfl={kf_strings[p]}")
                     expr[f"if P < {p:.15e}:"].append(f"    kfh={kf_strings[p]}")
                     expr[f"if P < {p:.15e}:"].append(f"    logPl=1.0")
                     expr[f"if P < {p:.15e}:"].append(f"    logPh={np.log(p):.15e}")
                 elif i < len(sorted_pressures) - 1:
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"] = []
+                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"] = [f"elif P < {sorted_pressures[i+1]:.15e}:"]
                     expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfl={kf_strings[p]}")
                     expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfh={kf_strings[sorted_pressures[i+1]]}")
                     expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPl={np.log(p):.15e}")
                     expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPh={np.log(sorted_pressures[i+1]):.15e}")
 
-            expr["else:"] = []
+            expr["else:"] = ["else:"]
             last_p = sorted_pressures[-1]
             expr["else:"].append(f"    kfl={kf_strings[last_p]}")
             expr["else:"].append(f"    kfh={kf_strings[last_p]}")
             expr["else:"].append(f"    logPl={np.log(last_p):.15e}")
             expr["else:"].append(f"    logPh=100.0")
 
-            expr["else:"].append("kf = np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))")
-            expr["else:"].append(f"kb = kf * ({eqk})" if reaction['reversible'] else "0")
-            expr["else:"].append(f"rr = kf * ({reactants_expr}) - kb * ({products_expr})")
+            expr["kf"] = "np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))"
+            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0.0"
+            expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
         
         expr["wdot"] = self.get_species_production_rate(reaction_number, reaction)
         return expr
@@ -426,14 +426,32 @@ class chemistry_expressions:
         vectorized_expr = {}
         
         for key, expr in reaction_expr.items():
-            if key.startswith("if") or key.startswith("elif") or key == "else:":
+            if key.startswith("if"):
                 vectorized = ["for i in range(veclen):"]
+            else:
+                vectorized = []
+            if key.startswith("if") or key.startswith("elif") or key == "else:":
                 for line in expr:
                     vectorized_line = "    " + line
-                    for var in vector_vars:
+                    for var in ["T"]:
                         vectorized_line = vectorized_line.replace(f"{var}", f"{var}[i]")
                     vectorized.append(vectorized_line)
+                vectorized[0] = vectorized[0].replace("P","P[i]")
+                vectorized[1] = vectorized[1].replace("P","P[i]")
                 vectorized_expr[key] = vectorized
+            elif key == "kf":
+                vectorized_line = expr
+                vectorized_line = vectorized_line.replace("logPl","logkl")\
+                               .replace("logPh","logkh")\
+                               .replace("kfl","bfl")\
+                               .replace("kfh","bfh")
+                for var in vector_vars:
+                    vectorized_line = vectorized_line.replace(f"{var}", f"{var}[i]")
+                vectorized_line = vectorized_line.replace("logkl","logPl")\
+                               .replace("logkh","logPh")\
+                               .replace("bfl","kfl")\
+                               .replace("bfh","kfh")
+                vectorized_expr[key] = vectorized_line
             elif key == "wdot":
                 vectorized = [self.vectorize_wdot_expr(expr) for expr in expr]
                 vectorized_expr[key] = vectorized
@@ -456,26 +474,64 @@ class chemistry_expressions:
             return self.convert_to_fortran(expr)
 
     def convert_to_fortran(self, expr):
-        if isinstance(expr, list):  # This is a loop structure
-            loop_parts = expr[0].split()
-            loop_var = loop_parts[1]
-            range_parts = loop_parts[3].strip("range(").split(",")
-            range_parts[-1] = range_parts[-1].strip("):")
-            if len(range_parts) == 1:
-                start = "1"
-                end = range_parts[0]
-            elif len(range_parts) == 2:
-                start, end = range_parts
+        if isinstance(expr, list):  # This is a block structure (if, else, elif, or for)
+            first_line = expr[0].strip()
+            indent = " " * (len(expr[0]) - len(expr[0].strip()))
+            if first_line.startswith("for "):
+                loop_parts = first_line.split()
+                loop_var = loop_parts[1]
+                range_parts = loop_parts[3].strip("range(").split(",")
+                range_parts[-1] = range_parts[-1].strip("):")
+                if len(range_parts) == 1:
+                    start = "1"
+                    end = range_parts[0]
+                elif len(range_parts) == 2:
+                    start, end = range_parts
+                else:
+                    start, end, step = range_parts
+                    # Note: Fortran's step is handled differently, may need adjustment
+                
+                fortran_block = [f"{indent}do {loop_var} = {start}, {end}"]
+            elif first_line.startswith("if "):
+                condition = first_line[3:-1]  # Remove 'if ' and ':'
+                fortran_block = [f"{indent}if ({self.convert_to_fortran(condition)}) then"]
+            elif first_line.startswith("elif "):
+                condition = first_line[5:-1]  # Remove 'elif ' and ':'
+                fortran_block = [f"{indent}else if ({self.convert_to_fortran(condition)}) then"]
+            elif first_line == "else:":
+                fortran_block = [f"{indent}else"]
             else:
-                start, end, step = range_parts
-                # Note: Fortran's step is handled differently, may need adjustment
+                raise ValueError(f"Unexpected block start: {first_line}")
+            i = 1            
+            while i < len(expr):
+                line = expr[i]
+                if (line.strip().startswith("if ") or 
+                    line.strip().startswith("elif ") or 
+                    line.strip().startswith("else:") or 
+                    line.strip().startswith("for ")):
+                    # Start of a nested block
+                    print(line)
+                    nested_block = [line]
+                    i += 1
+                    current_indent = len(line) - len(line.lstrip())
+                    while i < len(expr) and len(expr[i]) - len(expr[i].lstrip()) > current_indent:
+                        print(expr[i])
+                        nested_block.append(expr[i])
+                        i += 1
+                    converted_nested_block = self.convert_to_fortran(nested_block)
+                    for c in converted_nested_block:
+                        print(c)
+                    fortran_block.extend([l for l in converted_nested_block])
+                else:
+                    fortran_block.append(self.convert_to_fortran(line))
+                    i += 1
             
-            fortran_loop = [f"do {loop_var} = {start}, {end}"]
-            for line in expr[1:]:
-                fortran_loop.append(f"{self.convert_to_fortran(line)}")
-            fortran_loop.append("end do")
+            if first_line.startswith("for "):
+                fortran_block.append(f"{indent}end do")
+            elif first_line == "else:":
+                fortran_block.append(f"{indent}end if")
             
-            return fortran_loop
+            return fortran_block
         else:  # This is a single expression
             # Convert Python-style expressions to Fortran
             expr = expr.replace("**", "**")
@@ -485,6 +541,28 @@ class chemistry_expressions:
             expr = expr.replace("\\", "&")
             expr = expr.replace("np.log", "dlog")
             expr = expr.replace("np.log10", "dlog10")
+            # Handle if, elif, else, and for statements
+            if expr.strip().startswith("if "):
+                condition = expr.strip()[3:-1]  # Remove 'if ' and ':'
+                expr = f"if ({self.convert_to_fortran(condition)}) then"
+            elif expr.strip().startswith("elif "):
+                condition = expr.strip()[5:-1]  # Remove 'elif ' and ':'
+                expr = f"else if ({self.convert_to_fortran(condition)}) then"
+            elif expr.strip() == "else:":
+                expr = "else"
+            elif expr.strip().startswith("for "):
+                loop_parts = expr.strip().split()
+                loop_var = loop_parts[1]
+                range_parts = loop_parts[3].strip("range(").split(",")
+                range_parts[-1] = range_parts[-1].strip("):")
+                if len(range_parts) == 1:
+                    start = "1"
+                    end = range_parts[0]
+                elif len(range_parts) == 2:
+                    start, end = range_parts
+                else:
+                    start, end, step = range_parts
+                expr = f"do {loop_var} = {start}, {end}"
 
             # Increase all indices between parentheses by 1 using regex
             def increment_index(match):
@@ -543,7 +621,10 @@ class chemistry_expressions:
                 i = 0
                 while i < len(exp_g_expr):
                     expr = exp_g_expr[i]
-                    if expr.startswith("for ") or expr.startswith("if "):
+                    if expr.startswith("for ") or \
+                        expr.startswith("if ") or \
+                        expr.startswith("else") or \
+                        expr.startswith("elif"):
                         # Found a loop or conditional, collect all expressions until the indentation changes
                         block_exprs = [expr]
                         i += 1
@@ -581,13 +662,22 @@ class chemistry_expressions:
     def write_plog_reaction(self, f, reaction_expr):
         for key, expr_list in reaction_expr.items():
             if key.startswith("if") or key.startswith("elif") or key == "else:":
-                f.write(f"    {self.format_expression(key)}\n")
-                for expr in expr_list:
-                    if("logP" in expr):
-                        print(expr)
-                    f.write(f"    {self.format_expression(expr)}\n")
+                if key.startswith("if") and self.vec:
+                    expr_list[0] = self.format_expression(expr_list[0])
+                    formatted_block = self.format_expression(expr_list[1:])
+                    formatted_block = [expr_list[0]] + formatted_block
+                else:
+                    formatted_block = self.format_expression(expr_list)
+                for line in formatted_block:
+                    f.write(f"    {line}\n")
             elif key != "wdot":
-                f.write(f"    {key} = {self.format_expression(expr_list)}\n")
+                if(self.vec and key == "kf"):
+                    vec_key = self.format_expression("    "+key+"[i]")
+                    f.write(f"    {vec_key} = {self.format_expression(expr_list)}\n")
+                    if(self.language == "fortran"):
+                        f.write("    end do\n")
+                else:
+                    f.write(f"    {key} = {self.format_expression(expr_list)}\n")
 
     def write_python_header(self, f):
         f.write("import numpy as np\n\n")

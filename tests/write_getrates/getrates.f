@@ -81,7 +81,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
 
     ! Exponential G calculations
     ! H2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.661320882000000e+00&
         + 2.344331120000000e+00 * dlog(T)&
@@ -90,8 +90,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.679767450000000e-09 * T**3&
         - 3.688058805000000e-13 * T**4&
         + 9.179351730000000e+02 / T
-    end do
-    else:
+    else
         smh = &
         -3.957194400000000e+00&
         + 2.932865750000000e+00 * dlog(T)&
@@ -100,10 +99,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.284170116666667e-12 * T**3&
         - 3.444024000000000e-17 * T**4&
         + 8.130655810000000e+02 / T
+    end if
     EG(1) = dexp(smh)
 
     ! H
-    do T = 1, 6000.0
+    if (T < 6000.0) then
         smh = &
         -2.946682850000000e+00&
         + 2.500000000000000e+00 * dlog(T)&
@@ -112,8 +112,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 0.000000000000000e+00 * T**3&
         + 0.000000000000000e+00 * T**4&
         - 2.547366000000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -2.946682850000000e+00&
         + 2.500000000000000e+00 * dlog(T)&
@@ -122,10 +121,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 0.000000000000000e+00 * T**3&
         + 0.000000000000000e+00 * T**4&
         - 2.547366000000000e+04 / T
+    end if
     EG(2) = dexp(smh)
 
     ! O2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.247806300000001e-01&
         + 3.782456360000000e+00 * dlog(T)&
@@ -134,8 +134,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 8.067745908333334e-10 * T**3&
         + 1.621864185000000e-13 * T**4&
         + 1.063943560000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -2.455978599999997e-01&
         + 3.660960650000000e+00 * dlog(T)&
@@ -144,10 +143,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.714982791666666e-12 * T**3&
         - 6.495671800000001e-17 * T**4&
         + 1.215977180000000e+03 / T
+    end if
     EG(3) = dexp(smh)
 
     ! O
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.116333640000000e+00&
         + 3.168267100000000e+00 * dlog(T)&
@@ -156,8 +156,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.106721866666666e-10 * T**3&
         + 1.056329855000000e-13 * T**4&
         - 2.912225920000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         2.378657600000000e+00&
         + 2.543636970000000e+00 * dlog(T)&
@@ -166,10 +165,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.129015375000000e-13 * T**3&
         - 2.397768470000000e-17 * T**4&
         - 2.922601200000000e+04 / T
+    end if
     EG(4) = dexp(smh)
 
     ! H2O
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -5.047644210000000e+00&
         + 4.198635200000000e+00 * dlog(T)&
@@ -178,8 +178,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 4.573272416666666e-10 * T**3&
         + 8.859840000000001e-14 * T**4&
         + 3.029372600000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         4.205511100000001e+00&
         + 2.677038900000000e+00 * dlog(T)&
@@ -188,10 +187,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 7.869459500000001e-12 * T**3&
         - 2.134499550000000e-16 * T**4&
         + 2.988589400000000e+04 / T
+    end if
     EG(5) = dexp(smh)
 
     ! OH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -4.095982717000000e+00&
         + 3.991984240000000e+00 * dlog(T)&
@@ -200,8 +200,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 3.232635883333333e-10 * T**3&
         + 6.815975100000000e-14 * T**4&
         - 3.368898360000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         3.006416189999999e+00&
         + 2.838530330000000e+00 * dlog(T)&
@@ -210,10 +209,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.505822741666666e-12 * T**3&
         - 1.211449450000000e-16 * T**4&
         - 3.697808080000000e+03 / T
+    end if
     EG(6) = dexp(smh)
 
     ! H2O2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.041418300000000e+00&
         + 4.315151490000000e+00 * dlog(T)&
@@ -222,8 +222,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 1.889691200000000e-09 * T**3&
         + 4.544750790000000e-13 * T**4&
         + 1.770674370000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -3.914802356000000e+00&
         + 4.579773050000000e+00 * dlog(T)&
@@ -232,10 +231,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.651761666666667e-11 * T**3&
         - 5.698439600000000e-16 * T**4&
         + 1.800717750000000e+04 / T
+    end if
     EG(7) = dexp(smh)
 
     ! HO2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -5.851358700000002e-01&
         + 4.301798070000000e+00 * dlog(T)&
@@ -244,8 +244,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 2.023032616666667e-09 * T**3&
         + 4.646126125000001e-13 * T**4&
         - 2.640184850000000e+02 / T
-    end do
-    else:
+    else
         smh = &
         -1.214610690000000e+00&
         + 4.172287410000000e+00 * dlog(T)&
@@ -254,10 +253,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.622146241666667e-12 * T**3&
         + 8.812845250000000e-18 * T**4&
         - 3.102068390000000e+01 / T
+    end if
     EG(8) = dexp(smh)
 
     ! CO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -7.112420000000030e-02&
         + 3.579533500000000e+00 * dlog(T)&
@@ -266,8 +266,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 7.558382166666667e-11 * T**3&
         - 4.522122450000000e-14 * T**4&
         + 1.434408600000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         2.968611800000000e+00&
         + 3.048485900000000e+00 * dlog(T)&
@@ -276,10 +275,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.571137000000000e-12 * T**3&
         - 2.349037300000000e-16 * T**4&
         + 1.426611700000000e+04 / T
+    end if
     EG(9) = dexp(smh)
 
     ! CO2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         7.544090500000000e+00&
         + 2.356813000000000e+00 * dlog(T)&
@@ -288,8 +288,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.047750666666667e-10 * T**3&
         - 7.144273999999999e-15 * T**4&
         + 4.837197100000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -6.571406600000000e+00&
         + 4.636511100000000e+00 * dlog(T)&
@@ -298,10 +297,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.336555500000000e-11 * T**3&
         - 4.580992850000000e-16 * T**4&
         + 4.902490400000000e+04 / T
+    end if
     EG(10) = dexp(smh)
 
     ! CH3O2H
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         8.468789730000001e+00&
         + 2.905408970000000e+00 * dlog(T)&
@@ -310,8 +310,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 2.106893958333333e-09 * T**3&
         + 6.718410600000000e-13 * T**4&
         + 1.688946320000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -2.216464688000000e+01&
         + 7.765380580000000e+00 * dlog(T)&
@@ -320,10 +319,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.905317258333333e-11 * T**3&
         - 1.376696275000000e-15 * T**4&
         + 1.829799840000000e+04 / T
+    end if
     EG(11) = dexp(smh)
 
     ! CH3O2
-    do T = 1, 1374.0
+    if (T < 1374.0) then
         smh = &
         1.494602945000000e+01&
         + 1.973392050000000e+00 * dlog(T)&
@@ -332,8 +332,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.666088041666666e-11 * T**3&
         + 1.410969575000000e-14 * T**4&
         - 2.542788350000000e+02 / T
-    end do
-    else:
+    else
         smh = &
         -1.467447561000000e+01&
         + 6.479704870000000e+00 * dlog(T)&
@@ -342,10 +341,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.246477466666667e-11 * T**3&
         - 1.125911995000000e-15 * T**4&
         + 1.562854410000000e+03 / T
+    end if
     EG(12) = dexp(smh)
 
     ! CH4
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -9.787603100000000e+00&
         + 5.149114680000000e+00 * dlog(T)&
@@ -354,8 +354,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 4.035389725000000e-09 * T**3&
         + 8.330172050000000e-13 * T**4&
         + 1.024659830000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         8.251800570000000e+00&
         + 1.653262260000000e+00 * dlog(T)&
@@ -364,10 +363,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.470692816666667e-11 * T**3&
         - 1.573483790000000e-15 * T**4&
         + 1.000959360000000e+04 / T
+    end if
     EG(13) = dexp(smh)
 
     ! CH3
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.983644300000000e+00&
         + 3.657179700000000e+00 * dlog(T)&
@@ -376,8 +376,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.515083583333334e-10 * T**3&
         + 1.232853700000000e-13 * T**4&
         - 1.642271600000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         1.744359300000000e+00&
         + 2.978120600000000e+00 * dlog(T)&
@@ -386,10 +385,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.560815833333334e-11 * T**3&
         - 8.958708000000000e-16 * T**4&
         - 1.650951300000000e+04 / T
+    end if
     EG(14) = dexp(smh)
 
     ! CH2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.964599010000000e+00&
         + 3.717578460000000e+00 * dlog(T)&
@@ -398,8 +398,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 2.907154166666667e-10 * T**3&
         + 8.260443300000000e-14 * T**4&
         - 4.587238660000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         1.577098250000000e+00&
         + 3.146318860000000e+00 * dlog(T)&
@@ -408,10 +407,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.254029833333333e-11 * T**3&
         - 4.286677575000000e-16 * T**4&
         - 4.604126050000000e+04 / T
+    end if
     EG(15) = dexp(smh)
 
     ! CH2(S)
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -4.940047560000000e+00&
         + 4.193313250000000e+00 * dlog(T)&
@@ -420,8 +420,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.524883175000000e-10 * T**3&
         + 9.661659949999999e-14 * T**4&
         - 5.036622460000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         9.252893500000003e-01&
         + 3.135016860000000e+00 * dlog(T)&
@@ -430,10 +429,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 9.464391416666667e-12 * T**3&
         - 3.181314175000000e-16 * T**4&
         - 5.050405040000000e+04 / T
+    end if
     EG(16) = dexp(smh)
 
     ! C
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.977069000000000e+00&
         + 2.554239500000000e+00 * dlog(T)&
@@ -442,8 +442,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 6.101957250000001e-11 * T**3&
         + 1.332607200000000e-14 * T**4&
         - 8.544268100000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         1.586803800000000e+00&
         + 2.605583000000000e+00 * dlog(T)&
@@ -452,10 +451,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 1.368661666666667e-12 * T**3&
         + 4.093529000000000e-17 * T**4&
         - 8.541174200000000e+04 / T
+    end if
     EG(17) = dexp(smh)
 
     ! CH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.405474200000000e+00&
         + 3.489758300000000e+00 * dlog(T)&
@@ -464,8 +464,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.635701666666667e-10 * T**3&
         - 7.030901500000000e-14 * T**4&
         - 7.061264599999999e+04 / T
-    end do
-    else:
+    else
         smh = &
         4.884245999999999e+00&
         + 2.520936900000000e+00 * dlog(T)&
@@ -474,10 +473,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.940806250000000e-12 * T**3&
         - 1.673725050000000e-16 * T**4&
         - 7.094676900000000e+04 / T
+    end if
     EG(18) = dexp(smh)
 
     ! CH3OH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -6.555841018000001e+00&
         + 5.658510510000000e+00 * dlog(T)&
@@ -486,8 +486,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 6.319774383333334e-09 * T**3&
         + 1.402137750000000e-12 * T**4&
         + 2.561197360000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         1.640318980000000e+00&
         + 3.527267950000000e+00 * dlog(T)&
@@ -496,10 +495,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.812066800000000e-11 * T**3&
         - 1.710913160000000e-15 * T**4&
         + 2.600288340000000e+04 / T
+    end if
     EG(19) = dexp(smh)
 
     ! CH3O
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         2.860603620000000e+00&
         + 3.711805020000000e+00 * dlog(T)&
@@ -508,8 +508,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 3.942267408333333e-09 * T**3&
         + 9.329421000000001e-13 * T**4&
         - 1.295697600000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -6.724592660000000e+00&
         + 4.757792380000000e+00 * dlog(T)&
@@ -518,10 +517,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.650754200000000e-11 * T**3&
         - 1.317685490000000e-15 * T**4&
         - 3.781119400000000e+02 / T
+    end if
     EG(20) = dexp(smh)
 
     ! CH2OH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.169208670000000e+00&
         + 4.478343670000000e+00 * dlog(T)&
@@ -530,8 +530,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 3.040575500000000e-09 * T**3&
         + 7.395372499999999e-13 * T**4&
         + 3.500728900000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -6.940058629999999e+00&
         + 5.093143700000000e+00 * dlog(T)&
@@ -540,10 +539,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.691734775000000e-11 * T**3&
         - 9.406295100000001e-16 * T**4&
         + 4.034096400000000e+03 / T
+    end if
     EG(21) = dexp(smh)
 
     ! CH2O
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -4.190925062000000e+00&
         + 4.793723120000000e+00 * dlog(T)&
@@ -552,8 +552,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 3.160710308333333e-09 * T**3&
         + 6.588632050000001e-13 * T**4&
         + 1.437919530000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         2.872552330000000e+00&
         + 3.169526650000000e+00 * dlog(T)&
@@ -562,10 +561,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.049797166666667e-11 * T**3&
         - 1.100747290000000e-15 * T**4&
         + 1.454868310000000e+04 / T
+    end if
     EG(22) = dexp(smh)
 
     ! HCO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -9.291974100000004e-01&
         + 4.237546100000000e+00 * dlog(T)&
@@ -574,8 +574,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 1.118666625000000e-09 * T**3&
         + 2.187081040000000e-13 * T**4&
         - 3.872411850000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -3.392448600000000e-01&
         + 3.920015420000000e+00 * dlog(T)&
@@ -584,10 +583,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 8.801329000000001e-12 * T**3&
         - 3.718991305000000e-16 * T**4&
         - 3.653429280000000e+03 / T
+    end if
     EG(23) = dexp(smh)
 
     ! HCOH
-    do T = 1, 1398.0
+    if (T < 1398.0) then
         smh = &
         3.767034991000000e+01&
         - 2.821574210000000e+00 * dlog(T)&
@@ -596,8 +596,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.551716258333333e-09 * T**3&
         - 1.729789190000000e-13 * T**4&
         - 1.129566720000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -3.653091412000000e+01&
         + 9.187492720000000e+00 * dlog(T)&
@@ -606,10 +605,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 9.143999083333333e-12 * T**3&
         - 3.448275640000000e-16 * T**4&
         - 7.813645930000000e+03 / T
+    end if
     EG(24) = dexp(smh)
 
     ! C2H6
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.624635780000000e+00&
         + 4.291425720000000e+00 * dlog(T)&
@@ -618,8 +618,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.903887241666666e-09 * T**3&
         + 1.343429180000000e-12 * T**4&
         + 1.152220560000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -5.015362423000000e+00&
         + 4.046664110000000e+00 * dlog(T)&
@@ -628,10 +627,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 7.315221200000000e-11 * T**3&
         - 2.615837655000000e-15 * T**4&
         + 1.244734990000000e+04 / T
+    end if
     EG(25) = dexp(smh)
 
     ! C2H5
-    do T = 1, 1387.0
+    if (T < 1387.0) then
         smh = &
         1.585161943000000e+01&
         + 1.327302170000000e+00 * dlog(T)&
@@ -640,8 +640,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 2.509528883333333e-11 * T**3&
         + 2.193088875000000e-14 * T**4&
         - 1.342840280000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -1.438436161000000e+01&
         + 5.887843900000000e+00 * dlog(T)&
@@ -650,10 +649,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.437493808333333e-11 * T**3&
         - 1.532563255000000e-15 * T**4&
         - 1.150654990000000e+04 / T
+    end if
     EG(26) = dexp(smh)
 
     ! C2H4
-    do T = 1, 1392.0
+    if (T < 1392.0) then
         smh = &
         1.810559747700000e+01&
         + 4.811182230000000e-01 * dlog(T)&
@@ -662,8 +662,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.276758658333333e-10 * T**3&
         - 1.509186445000000e-14 * T**4&
         - 5.443866480000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -1.171562703000000e+01&
         + 5.070612890000000e+00 * dlog(T)&
@@ -672,10 +671,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.006115425000000e-11 * T**3&
         - 1.391606980000000e-15 * T**4&
         - 3.663912170000000e+03 / T
+    end if
     EG(27) = dexp(smh)
 
     ! C2H3
-    do T = 1, 1400.0
+    if (T < 1400.0) then
         smh = &
         1.571095336000000e+01&
         + 1.255450940000000e+00 * dlog(T)&
@@ -684,8 +684,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.757630683333334e-10 * T**3&
         - 3.874307885000000e-14 * T**4&
         - 3.474355740000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -8.011265120000001e+00&
         + 4.996754150000000e+00 * dlog(T)&
@@ -694,10 +693,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.827502266666667e-11 * T**3&
         - 9.765846300000001e-16 * T**4&
         - 3.346043820000000e+04 / T
+    end if
     EG(28) = dexp(smh)
 
     ! C2H2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.313099641800000e+01&
         + 8.086796820000000e-01 * dlog(T)&
@@ -706,8 +706,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.334607983333333e-09 * T**3&
         - 4.250375825000001e-13 * T**4&
         - 2.642898080000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -8.657166830000000e+00&
         + 4.658784890000000e+00 * dlog(T)&
@@ -716,10 +715,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.058121200000000e-11 * T**3&
         - 6.930297950000000e-16 * T**4&
         - 2.575940420000000e+04 / T
+    end if
     EG(29) = dexp(smh)
 
     ! CH2CO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.179371079000000e+01&
         + 1.814225110000000e+00 * dlog(T)&
@@ -728,8 +728,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.208571008333333e-09 * T**3&
         - 1.994385340000000e-13 * T**4&
         + 7.053949260000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         -9.343950980000001e+00&
         + 5.358693670000000e+00 * dlog(T)&
@@ -738,10 +737,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.875563266666666e-11 * T**3&
         - 1.543209100000000e-15 * T**4&
         + 7.902940130000000e+03 / T
+    end if
     EG(30) = dexp(smh)
 
     ! HCCO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.182074931000000e+01&
         + 1.876079690000000e+00 * dlog(T)&
@@ -750,8 +750,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.545021175000000e-09 * T**3&
         - 5.064053450000001e-13 * T**4&
         - 2.016338400000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -1.142046602000000e+01&
         + 5.914793330000000e+00 * dlog(T)&
@@ -760,10 +759,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.720611208333333e-11 * T**3&
         - 6.073837949999999e-16 * T**4&
         - 1.935963010000000e+04 / T
+    end if
     EG(31) = dexp(smh)
 
     ! HCN
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         7.010272870000000e+00&
         + 2.223811580000000e+00 * dlog(T)&
@@ -772,8 +772,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.936775500000000e-10 * T**3&
         - 1.208653645000000e-13 * T**4&
         - 1.476707700000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         3.354750190000000e+00&
         + 2.923080970000000e+00 * dlog(T)&
@@ -782,10 +781,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.327045716666667e-11 * T**3&
         - 2.438435815000000e-15 * T**4&
         - 1.471068660000000e+04 / T
+    end if
     EG(32) = dexp(smh)
 
     ! NH3
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         3.214441100000003e-01&
         + 3.266505100000000e+00 * dlog(T)&
@@ -794,8 +794,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 7.908978433333333e-11 * T**3&
         - 4.511109845000000e-14 * T**4&
         + 6.365114050000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         1.388076962000000e+01&
         + 1.070969580000000e+00 * dlog(T)&
@@ -804,10 +803,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.933464925000000e-11 * T**3&
         - 5.678128550000000e-16 * T**4&
         + 5.771686890000000e+03 / T
+    end if
     EG(33) = dexp(smh)
 
     ! NH2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -3.201215712000000e+00&
         + 3.978835380000000e+00 * dlog(T)&
@@ -816,8 +816,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 7.656938333333334e-11 * T**3&
         - 4.911255760000000e-15 * T**4&
         - 2.124866730000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         5.025330030000000e+00&
         + 2.628396100000000e+00 * dlog(T)&
@@ -826,10 +825,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.255950316666667e-11 * T**3&
         - 2.297116400000000e-16 * T**4&
         - 2.159095860000000e+04 / T
+    end if
     EG(34) = dexp(smh)
 
     ! NH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.417063570000000e+00&
         + 3.446972090000000e+00 * dlog(T)&
@@ -838,8 +838,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.382941016666667e-10 * T**3&
         - 5.621714200000000e-14 * T**4&
         - 4.178992680000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         1.879557390000000e+00&
         + 2.951009550000000e+00 * dlog(T)&
@@ -848,10 +847,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 4.310933558333333e-12 * T**3&
         + 5.699071800000000e-16 * T**4&
         - 4.197070450000000e+04 / T
+    end if
     EG(35) = dexp(smh)
 
     ! N
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.695226830000000e+00&
         + 2.499766430000000e+00 * dlog(T)&
@@ -860,8 +860,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 4.121938575000000e-13 * T**3&
         + 1.370447530000000e-16 * T**4&
         - 5.607607100000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         2.233014610000000e+00&
         + 2.416042450000000e+00 * dlog(T)&
@@ -870,10 +869,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.515417116666667e-12 * T**3&
         - 1.016300795000000e-16 * T**4&
         - 5.610515120000000e+04 / T
+    end if
     EG(36) = dexp(smh)
 
     ! HNO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -2.763695520000000e+00&
         + 4.519880780000000e+00 * dlog(T)&
@@ -882,8 +882,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 1.239234766666667e-09 * T**3&
         + 2.223817490000000e-13 * T**4&
         - 1.176379250000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         7.843381579999999e+00&
         + 2.588198020000000e+00 * dlog(T)&
@@ -892,10 +891,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.851783566666666e-11 * T**3&
         - 2.974058715000000e-15 * T**4&
         - 1.202135740000000e+04 / T
+    end if
     EG(37) = dexp(smh)
 
     ! NO2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         5.181193570000000e+00&
         + 3.391009180000000e+00 * dlog(T)&
@@ -904,8 +904,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 6.351004108333333e-10 * T**3&
         + 1.399800675000000e-13 * T**4&
         - 2.781306790000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         2.874441610000000e+00&
         + 3.652392790000000e+00 * dlog(T)&
@@ -914,10 +913,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.211523616666667e-11 * T**3&
         - 3.819455540000000e-15 * T**4&
         - 2.572161370000000e+03 / T
+    end if
     EG(38) = dexp(smh)
 
     ! N2O
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         7.311359789999999e+00&
         + 2.491263560000000e+00 * dlog(T)&
@@ -926,8 +926,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.194080475000000e-10 * T**3&
         - 3.597308920000000e-14 * T**4&
         - 8.849386210000001e+03 / T
-    end do
-    else:
+    else
         smh = &
         6.556394999999999e-01&
         + 3.613169070000000e+00 * dlog(T)&
@@ -936,10 +935,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.670877483333334e-11 * T**3&
         - 4.131659760000000e-15 * T**4&
         - 8.600751259999999e+03 / T
+    end if
     EG(39) = dexp(smh)
 
     ! HNC
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         6.775512149999999e+00&
         + 2.319951350000000e+00 * dlog(T)&
@@ -948,8 +948,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.920738625000000e-10 * T**3&
         - 4.354171745000000e-14 * T**4&
         - 2.209029420000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         3.262837090000000e+00&
         + 2.932691870000000e+00 * dlog(T)&
@@ -958,10 +957,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 3.164276425000000e-11 * T**3&
         - 1.667839785000000e-15 * T**4&
         - 2.197898290000000e+04 / T
+    end if
     EG(40) = dexp(smh)
 
     ! CN
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -8.108521400000002e-01&
         + 3.834814400000000e+00 * dlog(T)&
@@ -970,8 +970,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 3.972701533333334e-10 * T**3&
         + 6.380922000000000e-14 * T**4&
         - 5.191015930000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         6.693767640000001e+00&
         + 2.544173270000000e+00 * dlog(T)&
@@ -980,10 +979,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.556227416666667e-11 * T**3&
         - 3.246579910000000e-15 * T**4&
         - 5.216576380000000e+04 / T
+    end if
     EG(41) = dexp(smh)
 
     ! HNCO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         1.188900921000000e+01&
         + 1.862247190000000e+00 * dlog(T)&
@@ -992,8 +992,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.250707875000000e-09 * T**3&
         - 2.066883140000000e-13 * T**4&
         + 1.562000400000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -1.091351590000000e+00&
         + 4.168934870000000e+00 * dlog(T)&
@@ -1002,10 +1001,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.705044066666667e-11 * T**3&
         - 4.016227810000000e-16 * T**4&
         + 1.599038920000000e+04 / T
+    end if
     EG(42) = dexp(smh)
 
     ! HCNO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -2.411256099999997e-01&
         + 3.866481360000000e+00 * dlog(T)&
@@ -1014,8 +1014,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 4.472192608333334e-10 * T**3&
         - 6.516058450000000e-14 * T**4&
         - 1.873855690000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -4.097470746000000e+00&
         + 4.550253540000000e+00 * dlog(T)&
@@ -1024,10 +1023,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 9.306262666666667e-11 * T**3&
         - 5.725460850000000e-15 * T**4&
         - 1.862704900000000e+04 / T
+    end if
     EG(43) = dexp(smh)
 
     ! NCO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         6.265490140000001e+00&
         + 2.808722710000000e+00 * dlog(T)&
@@ -1036,8 +1036,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.051404666666667e-10 * T**3&
         + 4.954950925000000e-15 * T**4&
         - 1.373487570000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         3.221707700000001e-01&
         + 3.779306050000000e+00 * dlog(T)&
@@ -1046,10 +1045,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 7.184516158333333e-11 * T**3&
         - 4.562377015000000e-15 * T**4&
         - 1.348271260000000e+04 / T
+    end if
     EG(44) = dexp(smh)
 
     ! NCN
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         3.957331340000001e+00&
         + 3.157271700000000e+00 * dlog(T)&
@@ -1058,8 +1058,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.087917058333333e-11 * T**3&
         + 4.066883220000000e-14 * T**4&
         - 5.343741580000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -4.295089137000001e+00&
         + 4.479037100000000e+00 * dlog(T)&
@@ -1068,10 +1067,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.243347108333333e-11 * T**3&
         - 4.023119400000000e-15 * T**4&
         - 5.306228250000000e+04 / T
+    end if
     EG(45) = dexp(smh)
 
     ! HNCN
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         6.343206840000000e+00&
         + 3.067543110000000e+00 * dlog(T)&
@@ -1080,8 +1080,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.165694916666667e-10 * T**3&
         - 6.352880600000000e-15 * T**4&
         - 3.666235080000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         -8.934335460000000e+00&
         + 5.538464480000000e+00 * dlog(T)&
@@ -1090,10 +1089,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.844123041666667e-11 * T**3&
         - 6.591366250000000e-16 * T**4&
         - 3.596353370000000e+04 / T
+    end if
     EG(46) = dexp(smh)
 
     ! CH2NH
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         8.280209270000000e+00&
         + 2.599042030000000e+00 * dlog(T)&
@@ -1102,8 +1102,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 1.285251033333333e-09 * T**3&
         + 2.538226270000000e-13 * T**4&
         - 9.678567190000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         1.449905070000000e+01&
         + 1.360870500000000e+00 * dlog(T)&
@@ -1112,10 +1111,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 1.202647833333333e-10 * T**3&
         - 6.644343850000000e-15 * T**4&
         - 9.727643099999999e+03 / T
+    end if
     EG(47) = dexp(smh)
 
     ! H2CN
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         6.234720290000000e+00&
         + 2.853937370000000e+00 * dlog(T)&
@@ -1124,8 +1124,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 5.161233741666666e-10 * T**3&
         + 1.066403325000000e-13 * T**4&
         - 2.759557120000000e+04 / T
-    end do
-    else:
+    else
         smh = &
         9.057100850000001e+00&
         + 2.297394050000000e+00 * dlog(T)&
@@ -1134,10 +1133,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 8.855359666666667e-11 * T**3&
         - 5.019339950000000e-15 * T**4&
         - 2.762304740000000e+04 / T
+    end if
     EG(48) = dexp(smh)
 
     ! NO
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -1.610656550000000e+00&
         + 4.150366870000000e+00 * dlog(T)&
@@ -1146,8 +1146,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         - 6.257574174999999e-10 * T**3&
         + 1.058713990000000e-13 * T**4&
         - 9.770186790000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         6.088598350000000e+00&
         + 2.794628390000000e+00 * dlog(T)&
@@ -1156,10 +1155,11 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.329341816666667e-11 * T**3&
         - 1.343126815000000e-15 * T**4&
         - 1.000190690000000e+04 / T
+    end if
     EG(49) = dexp(smh)
 
     ! N2
-    do T = 1, 1000.0
+    if (T < 1000.0) then
         smh = &
         -5.635349000000001e-01&
         + 3.531005280000000e+00 * dlog(T)&
@@ -1168,8 +1168,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 2.029421766666667e-10 * T**3&
         - 7.044061750000001e-14 * T**4&
         + 1.046976280000000e+03 / T
-    end do
-    else:
+    else
         smh = &
         2.919311250000000e+00&
         + 2.952576370000000e+00 * dlog(T)&
@@ -1178,6 +1177,7 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
         + 6.550084958333333e-12 * T**3&
         - 2.303776020000000e-16 * T**4&
         + 9.239486879999999e+02 / T
+    end if
     EG(50) = dexp(smh)
 
     ! Reaction H2 + M <=> 2 H + M
@@ -1457,31 +1457,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(8) = wdot(8) + rr
 
     ! Reaction CO + OH <=> CO2 + H
-    if P < 1.332423750000000e+04:
+    if (P < 1.332423750000000e+04) then
         kfl=2.100000000000000e+05 * (T ** 1.9) * dexp(2.064000000000000e+03 / (Rc * T))
         kfh=2.100000000000000e+05 * (T ** 1.9) * dexp(2.064000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.497340024132191e+00
-    elif P < 1.332423750000000e+06:
+    else if (P < 1.332423750000000e+06) then
         kfl=2.500000000000000e+05 * (T ** 1.88) * dexp(2.043000000000000e+03 / (Rc * T))
         kfh=8.700000000000000e+05 * (T ** 1.73) * dexp(7.850000000000000e+02 / (Rc * T))
         logPl=1.179992511712624e+01
         logPh=1.410251021012028e+01
-    elif P < 1.333234349999999e+07:
+    else if (P < 1.333234349999999e+07) then
         kfl=8.700000000000000e+05 * (T ** 1.73) * dexp(7.850000000000000e+02 / (Rc * T))
         kfh=6.800000000000000e+06 * (T ** 1.48) * dexp(-4.800000000000000e+01 / (Rc * T))
         logPl=1.410251021012028e+01
         logPh=1.640570348315436e+01
-    elif P < 1.333234350000001e+08:
+    else if (P < 1.333234350000001e+08) then
         kfl=6.800000000000000e+06 * (T ** 1.48) * dexp(-4.800000000000000e+01 / (Rc * T))
         kfh=2.300000000000000e+07 * (T ** 1.35) * dexp(-9.740000000000000e+02 / (Rc * T))
         logPl=1.640570348315436e+01
         logPh=1.870828857614841e+01
-    else:
+    else
         kfl=2.300000000000000e+07 * (T ** 1.35) * dexp(-9.740000000000000e+02 / (Rc * T))
         kfh=2.300000000000000e+07 * (T ** 1.35) * dexp(-9.740000000000000e+02 / (Rc * T))
         logPl=1.870828857614841e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(9) * EG(6))/(EG(10) * EG(2))))
     rr = kf * (C(9) * C(6)) - kb * (C(10) * C(2))
@@ -1947,31 +1948,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(5) = wdot(5) + rr
 
     ! Reaction CH3 + OH <=> CH2(S) + H2O
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=4.936000000000000e+14 * (T ** -0.669) * dexp(5.458000000000000e+02 / (Rc * T))
         kfh=4.936000000000000e+14 * (T ** -0.669) * dexp(5.458000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.207000000000000e+15 * (T ** -0.778) * dexp(2.756000000000000e+02 / (Rc * T))
         kfh=5.282000000000000e+17 * (T ** -1.518) * dexp(-1.772000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=5.282000000000000e+17 * (T ** -1.518) * dexp(-1.772000000000000e+03 / (Rc * T))
         kfh=4.788000000000000e+23 * (T ** -3.155) * dexp(-7.003000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=4.788000000000000e+23 * (T ** -3.155) * dexp(-7.003000000000000e+03 / (Rc * T))
         kfh=8.433000000000000e+19 * (T ** -1.962) * dexp(-8.244000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=8.433000000000000e+19 * (T ** -1.962) * dexp(-8.244000000000000e+03 / (Rc * T))
         kfh=8.433000000000000e+19 * (T ** -1.962) * dexp(-8.244000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14) * EG(6))/(EG(16) * EG(5))))
     rr = kf * (C(14) * C(6)) - kb * (C(16) * C(5))
@@ -1981,31 +1983,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(5) = wdot(5) + rr
 
     ! Reaction CH3 + OH <=> CH2O + H2
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=3.502000000000000e+05 * (T ** 1.441) * dexp(4.244000000000000e+03 / (Rc * T))
         kfh=3.502000000000000e+05 * (T ** 1.441) * dexp(4.244000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=8.854000000000001e+05 * (T ** 1.327) * dexp(3.975000000000000e+03 / (Rc * T))
         kfh=1.650000000000000e+07 * (T ** 0.973) * dexp(3.010000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.650000000000000e+07 * (T ** 0.973) * dexp(3.010000000000000e+03 / (Rc * T))
         kfh=5.374000000000000e+09 * (T ** 0.287) * dexp(-2.800000000000000e+02 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=5.374000000000000e+09 * (T ** 0.287) * dexp(-2.800000000000000e+02 / (Rc * T))
         kfh=9.494000000000000e+18 * (T ** -2.199) * dexp(-9.769000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=9.494000000000000e+18 * (T ** -2.199) * dexp(-9.769000000000000e+03 / (Rc * T))
         kfh=9.494000000000000e+18 * (T ** -2.199) * dexp(-9.769000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14) * EG(6))/(EG(22) * EG(1))))
     rr = kf * (C(14) * C(6)) - kb * (C(22) * C(1))
@@ -2015,31 +2018,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(1) = wdot(1) + rr
 
     ! Reaction CH3 + OH <=> CH2OH + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=1.053650000000000e+10 * (T ** 0.965) * dexp(-3.210000000000000e+03 / (Rc * T))
         kfh=1.053650000000000e+10 * (T ** 0.965) * dexp(-3.210000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.174550000000000e+10 * (T ** 0.95) * dexp(-3.250000000000000e+03 / (Rc * T))
         kfh=3.045900000000000e+10 * (T ** 0.833) * dexp(-3.570000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=3.045900000000000e+10 * (T ** 0.833) * dexp(-3.570000000000000e+03 / (Rc * T))
         kfh=9.912500000000000e+12 * (T ** 0.134) * dexp(-5.640000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=9.912500000000000e+12 * (T ** 0.134) * dexp(-5.640000000000000e+03 / (Rc * T))
         kfh=2.333500000000000e+14 * (T ** -0.186) * dexp(-8.600000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=2.333500000000000e+14 * (T ** -0.186) * dexp(-8.600000000000000e+03 / (Rc * T))
         kfh=2.333500000000000e+14 * (T ** -0.186) * dexp(-8.600000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14) * EG(6))/(EG(21) * EG(2))))
     rr = kf * (C(14) * C(6)) - kb * (C(21) * C(2))
@@ -2049,31 +2053,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(2) = wdot(2) + rr
 
     ! Reaction CH3 + OH <=> CH3O + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=1.186000000000000e+09 * (T ** 1.016) * dexp(-1.194000000000000e+04 / (Rc * T))
         kfh=1.186000000000000e+09 * (T ** 1.016) * dexp(-1.194000000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.188000000000000e+09 * (T ** 1.016) * dexp(-1.194000000000000e+04 / (Rc * T))
         kfh=1.230000000000000e+09 * (T ** 1.011) * dexp(-1.195000000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.230000000000000e+09 * (T ** 1.011) * dexp(-1.195000000000000e+04 / (Rc * T))
         kfh=1.798000000000000e+09 * (T ** 0.965) * dexp(-1.206000000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.798000000000000e+09 * (T ** 0.965) * dexp(-1.206000000000000e+04 / (Rc * T))
         kfh=5.242000000000000e+10 * (T ** 0.551) * dexp(-1.307000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=5.242000000000000e+10 * (T ** 0.551) * dexp(-1.307000000000000e+04 / (Rc * T))
         kfh=5.242000000000000e+10 * (T ** 0.551) * dexp(-1.307000000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14) * EG(6))/(EG(20) * EG(2))))
     rr = kf * (C(14) * C(6)) - kb * (C(20) * C(2))
@@ -2083,31 +2088,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(2) = wdot(2) + rr
 
     ! Reaction CH3 + OH <=> H2 + HCOH
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=8.674000000000000e+08 * (T ** 0.787) * dexp(4.046000000000000e+03 / (Rc * T))
         kfh=8.674000000000000e+08 * (T ** 0.787) * dexp(4.046000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=3.115000000000000e+09 * (T ** 0.63) * dexp(3.669000000000000e+03 / (Rc * T))
         kfh=1.557000000000000e+11 * (T ** 0.156) * dexp(2.368000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.557000000000000e+11 * (T ** 0.156) * dexp(2.368000000000000e+03 / (Rc * T))
         kfh=1.704000000000000e+21 * (T ** -2.641) * dexp(-6.412000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.704000000000000e+21 * (T ** -2.641) * dexp(-6.412000000000000e+03 / (Rc * T))
         kfh=7.250000000000000e+20 * (T ** -2.402) * dexp(-9.639000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=7.250000000000000e+20 * (T ** -2.402) * dexp(-9.639000000000000e+03 / (Rc * T))
         kfh=7.250000000000000e+20 * (T ** -2.402) * dexp(-9.639000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14) * EG(6))/(EG(1) * EG(24))))
     rr = kf * (C(14) * C(6)) - kb * (C(1) * C(24))
@@ -2832,31 +2838,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(25) = wdot(25) + rr
 
     ! Reaction 2 CH3 <=> C2H5 + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=4.740000000000000e+12 * (T ** 0.105) * dexp(-1.066430000000000e+04 / (Rc * T))
         kfh=4.740000000000000e+12 * (T ** 0.105) * dexp(-1.066430000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=2.570000000000000e+13 * (T ** -0.096) * dexp(-1.140610000000000e+04 / (Rc * T))
         kfh=3.100000000000000e+14 * (T ** -0.362) * dexp(-1.337250000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=3.100000000000000e+14 * (T ** -0.362) * dexp(-1.337250000000000e+04 / (Rc * T))
         kfh=2.150000000000000e+10 * (T ** 0.885) * dexp(-1.353250000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=2.150000000000000e+10 * (T ** 0.885) * dexp(-1.353250000000000e+04 / (Rc * T))
         kfh=1.032000000000000e+02 * (T ** 3.23) * dexp(-1.123610000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.032000000000000e+02 * (T ** 3.23) * dexp(-1.123610000000000e+04 / (Rc * T))
         kfh=1.032000000000000e+02 * (T ** 3.23) * dexp(-1.123610000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(14)**(3.0))/(EG(26) * EG(2))))
     rr = kf * (C(14)**2.0) - kb * (C(26) * C(2))
@@ -2990,36 +2997,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(6) = wdot(6) + rr
 
     ! Reaction C2H5 + OH <=> C2H4 + H2O
-    if P < 1.013250000000000e+03:
+    if (P < 1.013250000000000e+03) then
         kfl=1.292600000000000e+19 * (T ** -1.96) * dexp(-2.727000000000000e+02 / (Rc * T))
         kfh=1.292600000000000e+19 * (T ** -1.96) * dexp(-2.727000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=6.920918265508418e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.218400000000000e+19 * (T ** -1.9533) * dexp(-2.388000000000000e+02 / (Rc * T))
         kfh=4.105200000000000e+19 * (T ** -2.1007) * dexp(-6.254000000000000e+02 / (Rc * T))
         logPl=9.223503358502464e+00
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=4.105200000000000e+19 * (T ** -2.1007) * dexp(-6.254000000000000e+02 / (Rc * T))
         kfh=7.940600000000000e+22 * (T ** -2.9892) * dexp(-3.862600000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=7.940600000000000e+22 * (T ** -2.9892) * dexp(-3.862600000000000e+03 / (Rc * T))
         kfh=2.792600000000000e+24 * (T ** -3.3287) * dexp(-7.748799999999999e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=2.792600000000000e+24 * (T ** -3.3287) * dexp(-7.748799999999999e+03 / (Rc * T))
         kfh=4.696100000000000e+18 * (T ** -1.5805) * dexp(-7.999200000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=4.696100000000000e+18 * (T ** -1.5805) * dexp(-7.999200000000000e+03 / (Rc * T))
         kfh=4.696100000000000e+18 * (T ** -1.5805) * dexp(-7.999200000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(26) * EG(6))/(EG(27) * EG(5))))
     rr = kf * (C(26) * C(6)) - kb * (C(27) * C(5))
@@ -3029,36 +3037,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(5) = wdot(5) + rr
 
     ! Reaction C2H5 + OH <=> CH2OH + CH3
-    if P < 1.013250000000000e+03:
+    if (P < 1.013250000000000e+03) then
         kfl=9.201700000000000e+17 * (T ** -1.2994) * dexp(-2.504600000000000e+03 / (Rc * T))
         kfh=9.201700000000000e+17 * (T ** -1.2994) * dexp(-2.504600000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=6.920918265508418e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.098100000000000e+18 * (T ** -1.3206) * dexp(-2.569400000000000e+03 / (Rc * T))
         kfh=5.736700000000000e+18 * (T ** -1.5182) * dexp(-3.184800000000000e+03 / (Rc * T))
         logPl=9.223503358502464e+00
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=5.736700000000000e+18 * (T ** -1.5182) * dexp(-3.184800000000000e+03 / (Rc * T))
         kfh=6.527800000000000e+21 * (T ** -2.3515) * dexp(-6.022700000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=6.527800000000000e+21 * (T ** -2.3515) * dexp(-6.022700000000000e+03 / (Rc * T))
         kfh=1.879900000000000e+25 * (T ** -3.2495) * dexp(-1.057620000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.879900000000000e+25 * (T ** -3.2495) * dexp(-1.057620000000000e+04 / (Rc * T))
         kfh=6.504400000000001e+22 * (T ** -2.4427) * dexp(-1.264660000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=6.504400000000001e+22 * (T ** -2.4427) * dexp(-1.264660000000000e+04 / (Rc * T))
         kfh=6.504400000000001e+22 * (T ** -2.4427) * dexp(-1.264660000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(26) * EG(6))/(EG(21) * EG(14))))
     rr = kf * (C(26) * C(6)) - kb * (C(21) * C(14))
@@ -3077,71 +3086,72 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(7) = wdot(7) + rr
 
     ! Reaction C2H5 + O2 <=> C2H4 + HO2
-    if P < 1.013250000000000e+02:
+    if (P < 1.013250000000000e+02) then
         kfl=9.100000000000000e+00 * (T ** 2.87) * dexp(6.099000000000000e+03 / (Rc * T))
         kfh=9.100000000000000e+00 * (T ** 2.87) * dexp(6.099000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=4.618333172514372e+00
-    elif P < 1.013250000000000e+03:
+    else if (P < 1.013250000000000e+03) then
         kfl=1.180000000000000e+01 * (T ** 2.84) * dexp(6.029000000000000e+03 / (Rc * T))
         kfh=2.820000000000000e+01 * (T ** 2.73) * dexp(5.780000000000000e+03 / (Rc * T))
         logPl=5.716945461182481e+00
         logPh=6.920918265508418e+00
-    elif P < 3.039750000000001e+03:
+    else if (P < 3.039750000000001e+03) then
         kfl=2.820000000000000e+01 * (T ** 2.73) * dexp(5.780000000000000e+03 / (Rc * T))
         kfh=1.100000000000000e+02 * (T ** 2.56) * dexp(5.380000000000000e+03 / (Rc * T))
         logPl=6.920918265508418e+00
         logPh=8.019530554176528e+00
-    elif P < 1.013250000000000e+04:
+    else if (P < 1.013250000000000e+04) then
         kfl=1.100000000000000e+02 * (T ** 2.56) * dexp(5.380000000000000e+03 / (Rc * T))
         kfh=9.570000000000001e+02 * (T ** 2.3) * dexp(4.735000000000000e+03 / (Rc * T))
         logPl=8.019530554176528e+00
         logPh=9.223503358502464e+00
-    elif P < 3.039750000000002e+04:
+    else if (P < 3.039750000000002e+04) then
         kfl=9.570000000000001e+02 * (T ** 2.3) * dexp(4.735000000000000e+03 / (Rc * T))
         kfh=1.320000000000000e+04 * (T ** 1.98) * dexp(3.933000000000000e+03 / (Rc * T))
         logPl=9.223503358502464e+00
         logPh=1.032211564717057e+01
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.320000000000000e+04 * (T ** 1.98) * dexp(3.933000000000000e+03 / (Rc * T))
         kfh=4.900000000000001e+05 * (T ** 1.54) * dexp(2.790000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=4.900000000000001e+05 * (T ** 1.54) * dexp(2.790000000000000e+03 / (Rc * T))
         kfh=2.410000000000000e+07 * (T ** 1.07) * dexp(5.977000000000000e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=2.410000000000000e+07 * (T ** 1.07) * dexp(5.977000000000000e+02 / (Rc * T))
         kfh=2.470000000000000e+09 * (T ** 0.51) * dexp(-1.157000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=2.470000000000000e+09 * (T ** 0.51) * dexp(-1.157000000000000e+03 / (Rc * T))
         kfh=1.360000000000000e+11 * (T ** 0.04) * dexp(-2.789000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.360000000000000e+11 * (T ** 0.04) * dexp(-2.789000000000000e+03 / (Rc * T))
         kfh=3.130000000000000e+12 * (T ** -0.31) * dexp(-4.501000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=3.130000000000000e+12 * (T ** -0.31) * dexp(-4.501000000000000e+03 / (Rc * T))
         kfh=5.290000000000000e+12 * (T ** -0.33) * dexp(-5.728000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=5.290000000000000e+12 * (T ** -0.33) * dexp(-5.728000000000000e+03 / (Rc * T))
         kfh=1.890000000000000e+11 * (T ** 0.14) * dexp(-6.373000000000000e+03 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.890000000000000e+11 * (T ** 0.14) * dexp(-6.373000000000000e+03 / (Rc * T))
         kfh=1.890000000000000e+11 * (T ** 0.14) * dexp(-6.373000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(26) * EG(3))/(EG(27) * EG(8))))
     rr = kf * (C(26) * C(3)) - kb * (C(27) * C(8))
@@ -3151,36 +3161,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(8) = wdot(8) + rr
 
     ! Reaction C2H3 + H <=> C2H4
-    if P < 1.013250000000000e+03:
+    if (P < 1.013250000000000e+03) then
         kfl=1.193500000000000e+26 * (T ** -5.021) * dexp(-3.089757000000000e+03 / (Rc * T))
         kfh=1.193500000000000e+26 * (T ** -5.021) * dexp(-3.089757000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=6.920918265508418e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.053500000000000e+27 * (T ** -5.0) * dexp(-3.073364000000000e+03 / (Rc * T))
         kfh=2.107000000000000e+28 * (T ** -5.085) * dexp(-3.485772000000000e+03 / (Rc * T))
         logPl=9.223503358502464e+00
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=2.107000000000000e+28 * (T ** -5.085) * dexp(-3.485772000000000e+03 / (Rc * T))
         kfh=8.820000000000001e+29 * (T ** -5.236) * dexp(-5.080164000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=8.820000000000001e+29 * (T ** -5.236) * dexp(-5.080164000000000e+03 / (Rc * T))
         kfh=3.623900000000000e+22 * (T ** -2.791) * dexp(-2.637005000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.623900000000000e+22 * (T ** -2.791) * dexp(-2.637005000000000e+03 / (Rc * T))
         kfh=1.249500000000000e+19 * (T ** -1.592) * dexp(-1.961089000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.249500000000000e+19 * (T ** -1.592) * dexp(-1.961089000000000e+03 / (Rc * T))
         kfh=1.249500000000000e+19 * (T ** -1.592) * dexp(-1.961089000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(2))/(EG(27)* pfac**-1.0)))
     rr = kf * (C(28) * C(2)) - kb * (C(27))
@@ -3306,36 +3317,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(2) = wdot(2) + rr
 
     ! Reaction C2H4 + OH <=> CH2O + CH3
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=5.350000000000000e+00 * (T ** 2.92) * dexp(2.732700000000000e+03 / (Rc * T))
         kfh=5.350000000000000e+00 * (T ** 2.92) * dexp(2.732700000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=3.190000000000000e+01 * (T ** 2.71) * dexp(2.172300000000000e+03 / (Rc * T))
         kfh=5.550000000000000e+02 * (T ** 2.36) * dexp(2.808000000000000e+02 / (Rc * T))
         logPl=1.013979409037662e+01
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=5.550000000000000e+02 * (T ** 2.36) * dexp(2.808000000000000e+02 / (Rc * T))
         kfh=1.780000000000000e+05 * (T ** 1.68) * dexp(-2.060500000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.780000000000000e+05 * (T ** 1.68) * dexp(-2.060500000000000e+03 / (Rc * T))
         kfh=2.370000000000000e+09 * (T ** 0.56) * dexp(-6.006700000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=2.370000000000000e+09 * (T ** 0.56) * dexp(-6.006700000000000e+03 / (Rc * T))
         kfh=2.760000000000000e+13 * (T ** -0.5) * dexp(-1.145510000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=2.760000000000000e+13 * (T ** -0.5) * dexp(-1.145510000000000e+04 / (Rc * T))
         kfh=2.760000000000000e+13 * (T ** -0.5) * dexp(-1.145510000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(27) * EG(6))/(EG(22) * EG(14))))
     rr = kf * (C(27) * C(6)) - kb * (C(22) * C(14))
@@ -3362,46 +3374,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(28) = wdot(28) + rr
 
     ! Reaction C2H3 + O2 <=> C2H2 + HO2
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=1.080000000000000e+07 * (T ** 1.28) * dexp(-3.322000000000000e+03 / (Rc * T)) + 4.760000000000000e+01 * (T ** 2.75) * dexp(8.964000000000000e+02 / (Rc * T))
         kfh=1.080000000000000e+07 * (T ** 1.28) * dexp(-3.322000000000000e+03 / (Rc * T)) + 4.760000000000000e+01 * (T ** 2.75) * dexp(8.964000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=7.750000000000000e+06 * (T ** 1.33) * dexp(-3.216000000000000e+03 / (Rc * T)) + 5.160000000000000e+01 * (T ** 2.73) * dexp(8.683000000000000e+02 / (Rc * T))
         kfh=1.210000000000000e+07 * (T ** 1.27) * dexp(-3.311000000000000e+03 / (Rc * T)) + 5.550000000000000e+01 * (T ** 2.73) * dexp(7.585000000000000e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.210000000000000e+07 * (T ** 1.27) * dexp(-3.311000000000000e+03 / (Rc * T)) + 5.550000000000000e+01 * (T ** 2.73) * dexp(7.585000000000000e+02 / (Rc * T))
         kfh=2.150000000000000e+07 * (T ** 1.19) * dexp(-3.367000000000000e+03 / (Rc * T)) + 4.600000000000000e+01 * (T ** 2.76) * dexp(5.928000000000000e+02 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=2.150000000000000e+07 * (T ** 1.19) * dexp(-3.367000000000000e+03 / (Rc * T)) + 4.600000000000000e+01 * (T ** 2.76) * dexp(5.928000000000000e+02 / (Rc * T))
         kfh=1.130000000000000e+08 * (T ** 1.0) * dexp(-3.695000000000000e+03 / (Rc * T)) + 3.750000000000000e+00 * (T ** 3.07) * dexp(7.010000000000000e+02 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.130000000000000e+08 * (T ** 1.0) * dexp(-3.695000000000000e+03 / (Rc * T)) + 3.750000000000000e+00 * (T ** 3.07) * dexp(7.010000000000000e+02 / (Rc * T))
         kfh=1.310000000000000e+11 * (T ** 0.12) * dexp(-5.872000000000000e+03 / (Rc * T)) + 5.480000000000000e+00 * (T ** 3.07) * dexp(-8.569999999999999e+01 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=1.310000000000000e+11 * (T ** 0.12) * dexp(-5.872000000000000e+03 / (Rc * T)) + 5.480000000000000e+00 * (T ** 3.07) * dexp(-8.569999999999999e+01 / (Rc * T))
         kfh=1.190000000000000e+09 * (T ** 0.82) * dexp(-5.617000000000000e+03 / (Rc * T)) + 4.470000000000000e+08 * dexp(-9.550000000000000e+02 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.190000000000000e+09 * (T ** 0.82) * dexp(-5.617000000000000e+03 / (Rc * T)) + 4.470000000000000e+08 * dexp(-9.550000000000000e+02 / (Rc * T))
         kfh=1.060000000000000e+17 * (T ** -1.45) * dexp(-1.223000000000000e+04 / (Rc * T)) + 2.020000000000000e+01 * (T ** 2.94) * dexp(-1.847000000000000e+03 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.060000000000000e+17 * (T ** -1.45) * dexp(-1.223000000000000e+04 / (Rc * T)) + 2.020000000000000e+01 * (T ** 2.94) * dexp(-1.847000000000000e+03 / (Rc * T))
         kfh=1.060000000000000e+17 * (T ** -1.45) * dexp(-1.223000000000000e+04 / (Rc * T)) + 2.020000000000000e+01 * (T ** 2.94) * dexp(-1.847000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(3))/(EG(29) * EG(8))))
     rr = kf * (C(28) * C(3)) - kb * (C(29) * C(8))
@@ -3411,46 +3424,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(8) = wdot(8) + rr
 
     ! Reaction C2H3 + O2 <=> CH2CO + OH
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=8.660000000000000e+02 * (T ** 2.41) * dexp(-6.061000000000000e+03 / (Rc * T)) + 1.820000000000000e-01 * (T ** 3.12) * dexp(-1.331000000000000e+03 / (Rc * T))
         kfh=8.660000000000000e+02 * (T ** 2.41) * dexp(-6.061000000000000e+03 / (Rc * T)) + 1.820000000000000e-01 * (T ** 3.12) * dexp(-1.331000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=8.910000000000001e+02 * (T ** 2.41) * dexp(-6.078000000000000e+03 / (Rc * T)) + 2.070000000000000e-01 * (T ** 3.11) * dexp(-1.383000000000000e+03 / (Rc * T))
         kfh=9.430000000000001e+02 * (T ** 2.4) * dexp(-6.112000000000000e+03 / (Rc * T)) + 2.710000000000001e-01 * (T ** 3.08) * dexp(-1.496000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=9.430000000000001e+02 * (T ** 2.4) * dexp(-6.112000000000000e+03 / (Rc * T)) + 2.710000000000001e-01 * (T ** 3.08) * dexp(-1.496000000000000e+03 / (Rc * T))
         kfh=1.060000000000000e+03 * (T ** 2.39) * dexp(-6.180000000000000e+03 / (Rc * T)) + 5.260000000000000e-01 * (T ** 3.01) * dexp(-1.777000000000000e+03 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=1.060000000000000e+03 * (T ** 2.39) * dexp(-6.180000000000000e+03 / (Rc * T)) + 5.260000000000000e-01 * (T ** 3.01) * dexp(-1.777000000000000e+03 / (Rc * T))
         kfh=1.090000000000000e+03 * (T ** 2.38) * dexp(-6.179000000000000e+03 / (Rc * T)) + 1.370000000000000e+00 * (T ** 2.9) * dexp(-2.225000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.090000000000000e+03 * (T ** 2.38) * dexp(-6.179000000000000e+03 / (Rc * T)) + 1.370000000000000e+00 * (T ** 2.9) * dexp(-2.225000000000000e+03 / (Rc * T))
         kfh=1.390000000000000e+03 * (T ** 2.36) * dexp(-6.074000000000000e+03 / (Rc * T)) + 4.190000000000000e-01 * (T ** 2.93) * dexp(-2.052000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=1.390000000000000e+03 * (T ** 2.36) * dexp(-6.074000000000000e+03 / (Rc * T)) + 4.190000000000000e-01 * (T ** 2.93) * dexp(-2.052000000000000e+03 / (Rc * T))
         kfh=2.490000000000000e+06 * (T ** 1.42) * dexp(-8.480000000000000e+03 / (Rc * T)) + 1.190000000000000e-04 * (T ** 4.21) * dexp(-2.043000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=2.490000000000000e+06 * (T ** 1.42) * dexp(-8.480000000000000e+03 / (Rc * T)) + 1.190000000000000e-04 * (T ** 4.21) * dexp(-2.043000000000000e+03 / (Rc * T))
         kfh=1.660000000000000e+10 * (T ** 0.36) * dexp(-1.201000000000000e+04 / (Rc * T)) + 1.300000000000000e-03 * (T ** 3.97) * dexp(-3.414000000000000e+03 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.660000000000000e+10 * (T ** 0.36) * dexp(-1.201000000000000e+04 / (Rc * T)) + 1.300000000000000e-03 * (T ** 3.97) * dexp(-3.414000000000000e+03 / (Rc * T))
         kfh=1.660000000000000e+10 * (T ** 0.36) * dexp(-1.201000000000000e+04 / (Rc * T)) + 1.300000000000000e-03 * (T ** 3.97) * dexp(-3.414000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(3))/(EG(30) * EG(6))))
     rr = kf * (C(28) * C(3)) - kb * (C(30) * C(6))
@@ -3460,46 +3474,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(6) = wdot(6) + rr
 
     ! Reaction C2H3 + O2 <=> CH2O + HCO
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=2.770000000000001e+36 * (T ** -7.6) * dexp(-1.264000000000000e+04 / (Rc * T)) + 5.040000000000000e+15 * (T ** -1.28) * dexp(-5.153000000000000e+02 / (Rc * T))
         kfh=2.770000000000001e+36 * (T ** -7.6) * dexp(-1.264000000000000e+04 / (Rc * T)) + 5.040000000000000e+15 * (T ** -1.28) * dexp(-5.153000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=2.700000000000000e+36 * (T ** -7.6) * dexp(-1.261000000000000e+04 / (Rc * T)) + 5.100000000000000e+15 * (T ** -1.28) * dexp(-5.130000000000000e+02 / (Rc * T))
         kfh=2.170000000000000e+36 * (T ** -7.57) * dexp(-1.249000000000000e+04 / (Rc * T)) + 5.340000000000000e+15 * (T ** -1.29) * dexp(-5.205999999999999e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=2.170000000000000e+36 * (T ** -7.57) * dexp(-1.249000000000000e+04 / (Rc * T)) + 5.340000000000000e+15 * (T ** -1.29) * dexp(-5.205999999999999e+02 / (Rc * T))
         kfh=3.030000000000000e+35 * (T ** -7.32) * dexp(-1.182000000000000e+04 / (Rc * T)) + 6.760000000000000e+15 * (T ** -1.31) * dexp(-6.457000000000000e+02 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=3.030000000000000e+35 * (T ** -7.32) * dexp(-1.182000000000000e+04 / (Rc * T)) + 6.760000000000000e+15 * (T ** -1.31) * dexp(-6.457000000000000e+02 / (Rc * T))
         kfh=1.590000000000000e+36 * (T ** -7.47) * dexp(-1.246000000000000e+04 / (Rc * T)) + 1.050000000000000e+16 * (T ** -1.36) * dexp(-1.066000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.590000000000000e+36 * (T ** -7.47) * dexp(-1.246000000000000e+04 / (Rc * T)) + 1.050000000000000e+16 * (T ** -1.36) * dexp(-1.066000000000000e+03 / (Rc * T))
         kfh=5.760000000000001e+35 * (T ** -7.2) * dexp(-1.343000000000000e+04 / (Rc * T)) + 2.840000000000000e+15 * (T ** -1.18) * dexp(-1.429000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=5.760000000000001e+35 * (T ** -7.2) * dexp(-1.343000000000000e+04 / (Rc * T)) + 2.840000000000000e+15 * (T ** -1.18) * dexp(-1.429000000000000e+03 / (Rc * T))
         kfh=3.540000000000000e+20 * (T ** -2.57) * dexp(-5.578000000000000e+03 / (Rc * T)) + 1.140000000000000e+69 * (T ** -19.23) * dexp(-1.476000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.540000000000000e+20 * (T ** -2.57) * dexp(-5.578000000000000e+03 / (Rc * T)) + 1.140000000000000e+69 * (T ** -19.23) * dexp(-1.476000000000000e+04 / (Rc * T))
         kfh=3.030000000000000e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 4.680000000000000e+10 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=3.030000000000000e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 4.680000000000000e+10 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         kfh=3.030000000000000e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 4.680000000000000e+10 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(3))/(EG(22) * EG(23))))
     rr = kf * (C(28) * C(3)) - kb * (C(22) * C(23))
@@ -3509,48 +3524,49 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(23) = wdot(23) + rr
 
     ! Reaction C2H3 + O2 => CH2O + CO + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=6.470000000000001e+36 * (T ** -7.6) * dexp(-1.264000000000000e+04 / (Rc * T)) + 1.180000000000000e+16 * (T ** -1.28) * dexp(-5.153000000000000e+02 / (Rc * T))
         kfh=6.470000000000001e+36 * (T ** -7.6) * dexp(-1.264000000000000e+04 / (Rc * T)) + 1.180000000000000e+16 * (T ** -1.28) * dexp(-5.153000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=6.290000000000001e+36 * (T ** -7.6) * dexp(-1.261000000000000e+04 / (Rc * T)) + 1.190000000000000e+16 * (T ** -1.28) * dexp(-5.130000000000000e+02 / (Rc * T))
         kfh=5.060000000000000e+36 * (T ** -7.57) * dexp(-1.249000000000000e+04 / (Rc * T)) + 1.260000000000000e+16 * (T ** -1.29) * dexp(-5.205999999999999e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=5.060000000000000e+36 * (T ** -7.57) * dexp(-1.249000000000000e+04 / (Rc * T)) + 1.260000000000000e+16 * (T ** -1.29) * dexp(-5.205999999999999e+02 / (Rc * T))
         kfh=7.070000000000000e+35 * (T ** -7.32) * dexp(-1.182000000000000e+04 / (Rc * T)) + 1.580000000000000e+16 * (T ** -1.31) * dexp(-6.457000000000000e+02 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=7.070000000000000e+35 * (T ** -7.32) * dexp(-1.182000000000000e+04 / (Rc * T)) + 1.580000000000000e+16 * (T ** -1.31) * dexp(-6.457000000000000e+02 / (Rc * T))
         kfh=3.720000000000000e+36 * (T ** -7.47) * dexp(-1.246000000000000e+04 / (Rc * T)) + 2.440000000000000e+16 * (T ** -1.36) * dexp(-1.066000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=3.720000000000000e+36 * (T ** -7.47) * dexp(-1.246000000000000e+04 / (Rc * T)) + 2.440000000000000e+16 * (T ** -1.36) * dexp(-1.066000000000000e+03 / (Rc * T))
         kfh=1.340000000000000e+36 * (T ** -7.2) * dexp(-1.343000000000000e+04 / (Rc * T)) + 6.640000000000000e+15 * (T ** -1.18) * dexp(-1.429000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=1.340000000000000e+36 * (T ** -7.2) * dexp(-1.343000000000000e+04 / (Rc * T)) + 6.640000000000000e+15 * (T ** -1.18) * dexp(-1.429000000000000e+03 / (Rc * T))
         kfh=8.260000000000000e+20 * (T ** -2.57) * dexp(-5.578000000000000e+03 / (Rc * T)) + 2.660000000000000e+69 * (T ** -19.23) * dexp(-1.476000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=8.260000000000000e+20 * (T ** -2.57) * dexp(-5.578000000000000e+03 / (Rc * T)) + 2.660000000000000e+69 * (T ** -19.23) * dexp(-1.476000000000000e+04 / (Rc * T))
         kfh=7.070000000000001e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 1.090000000000000e+11 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=7.070000000000001e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 1.090000000000000e+11 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         kfh=7.070000000000001e+33 * (T ** -6.28) * dexp(-1.600000000000000e+04 / (Rc * T)) + 1.090000000000000e+11 * (T ** 0.19) * dexp(-8.305999999999999e+02 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C(28) * C(3)) - kb * (C(22) * C(9) * C(2))
     wdot(28) = wdot(28) - rr
     wdot(3) = wdot(3) - rr
@@ -3559,46 +3575,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(2) = wdot(2) + rr
 
     ! Reaction C2H3 + O2 <=> CH3O + CO
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=8.190000000000000e+18 * (T ** -2.66) * dexp(-3.201000000000000e+03 / (Rc * T)) + 1.290000000000000e+09 * (T ** 0.18) * dexp(2.717000000000000e+03 / (Rc * T))
         kfh=8.190000000000000e+18 * (T ** -2.66) * dexp(-3.201000000000000e+03 / (Rc * T)) + 1.290000000000000e+09 * (T ** 0.18) * dexp(2.717000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=4.060000000000000e+14 * (T ** -1.32) * dexp(-8.858000000000000e+02 / (Rc * T)) + 5.990000000000000e+11 * (T ** -2.93) * dexp(10.564000000000000e+03 / (Rc * T))
         kfh=4.340000000000000e+14 * (T ** -1.33) * dexp(-9.005999999999999e+02 / (Rc * T)) + 2.910000000000000e+11 * (T ** -2.93) * dexp(2.012000000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=4.340000000000000e+14 * (T ** -1.33) * dexp(-9.005999999999999e+02 / (Rc * T)) + 2.910000000000000e+11 * (T ** -2.93) * dexp(2.012000000000000e+04 / (Rc * T))
         kfh=1.030000000000000e+11 * (T ** -0.33) * dexp(8.478000000000000e+02 / (Rc * T)) + 5.769999999999999e+21 * (T ** -3.54) * dexp(-4.772000000000000e+03 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=1.030000000000000e+11 * (T ** -0.33) * dexp(8.478000000000000e+02 / (Rc * T)) + 5.769999999999999e+21 * (T ** -3.54) * dexp(-4.772000000000000e+03 / (Rc * T))
         kfh=1.890000000000000e+12 * (T ** -3.0) * dexp(9.995000000000000e+03 / (Rc * T)) + 4.990000000000000e+15 * (T ** -1.62) * dexp(-1.849000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.890000000000000e+12 * (T ** -3.0) * dexp(9.995000000000000e+03 / (Rc * T)) + 4.990000000000000e+15 * (T ** -1.62) * dexp(-1.849000000000000e+03 / (Rc * T))
         kfh=1.930000000000000e+24 * (T ** -5.63) * dexp(-1.800000000000000e+00 / (Rc * T)) + 9.330000000000000e+16 * (T ** -1.96) * dexp(-3.324000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=1.930000000000000e+24 * (T ** -5.63) * dexp(-1.800000000000000e+00 / (Rc * T)) + 9.330000000000000e+16 * (T ** -1.96) * dexp(-3.324000000000000e+03 / (Rc * T))
         kfh=1.100000000000000e+18 * (T ** -2.22) * dexp(-5.178000000000000e+03 / (Rc * T)) + 1.020000000000000e+72 * (T ** -20.69) * dexp(-1.586000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.100000000000000e+18 * (T ** -2.22) * dexp(-5.178000000000000e+03 / (Rc * T)) + 1.020000000000000e+72 * (T ** -20.69) * dexp(-1.586000000000000e+04 / (Rc * T))
         kfh=5.790000000000000e+32 * (T ** -6.45) * dexp(-1.681000000000000e+04 / (Rc * T)) + 1.100000000000000e+09 * (T ** 0.31) * dexp(-1.024000000000000e+03 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=5.790000000000000e+32 * (T ** -6.45) * dexp(-1.681000000000000e+04 / (Rc * T)) + 1.100000000000000e+09 * (T ** 0.31) * dexp(-1.024000000000000e+03 / (Rc * T))
         kfh=5.790000000000000e+32 * (T ** -6.45) * dexp(-1.681000000000000e+04 / (Rc * T)) + 1.100000000000000e+09 * (T ** 0.31) * dexp(-1.024000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(3))/(EG(20) * EG(9))))
     rr = kf * (C(28) * C(3)) - kb * (C(20) * C(9))
@@ -3608,46 +3625,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(9) = wdot(9) + rr
 
     ! Reaction C2H3 + O2 <=> CH3 + CO2
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=2.370000000000000e+35 * (T ** -7.76) * dexp(-1.263000000000000e+04 / (Rc * T)) + 6.270000000000000e+13 * (T ** -1.16) * dexp(-4.063000000000000e+02 / (Rc * T))
         kfh=2.370000000000000e+35 * (T ** -7.76) * dexp(-1.263000000000000e+04 / (Rc * T)) + 6.270000000000000e+13 * (T ** -1.16) * dexp(-4.063000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=1.730000000000000e+35 * (T ** -7.72) * dexp(-1.252000000000000e+04 / (Rc * T)) + 6.240000000000000e+13 * (T ** -1.16) * dexp(-4.014000000000000e+02 / (Rc * T))
         kfh=4.470000000000001e+34 * (T ** -7.55) * dexp(-1.214000000000000e+04 / (Rc * T)) + 6.120000000000000e+13 * (T ** -1.16) * dexp(-3.970000000000000e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=4.470000000000001e+34 * (T ** -7.55) * dexp(-1.214000000000000e+04 / (Rc * T)) + 6.120000000000000e+13 * (T ** -1.16) * dexp(-3.970000000000000e+02 / (Rc * T))
         kfh=7.250000000000001e+31 * (T ** -6.7) * dexp(-1.044000000000000e+04 / (Rc * T)) + 5.320000000000000e+13 * (T ** -1.14) * dexp(-4.467000000000000e+02 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=7.250000000000001e+31 * (T ** -6.7) * dexp(-1.044000000000000e+04 / (Rc * T)) + 5.320000000000000e+13 * (T ** -1.14) * dexp(-4.467000000000000e+02 / (Rc * T))
         kfh=3.630000000000000e+35 * (T ** -7.75) * dexp(-1.283000000000000e+04 / (Rc * T)) + 1.450000000000000e+14 * (T ** -1.26) * dexp(-9.877000000000000e+02 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=3.630000000000000e+35 * (T ** -7.75) * dexp(-1.283000000000000e+04 / (Rc * T)) + 1.450000000000000e+14 * (T ** -1.26) * dexp(-9.877000000000000e+02 / (Rc * T))
         kfh=2.090000000000000e+35 * (T ** -7.53) * dexp(-1.405000000000000e+04 / (Rc * T)) + 5.020000000000000e+13 * (T ** -1.11) * dexp(-1.409000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=2.090000000000000e+35 * (T ** -7.53) * dexp(-1.405000000000000e+04 / (Rc * T)) + 5.020000000000000e+13 * (T ** -1.11) * dexp(-1.409000000000000e+03 / (Rc * T))
         kfh=3.840000000000000e+18 * (T ** -2.44) * dexp(-5.408000000000000e+03 / (Rc * T)) + 1.400000000000000e+70 * (T ** -20.11) * dexp(-1.543000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.840000000000000e+18 * (T ** -2.44) * dexp(-5.408000000000000e+03 / (Rc * T)) + 1.400000000000000e+70 * (T ** -20.11) * dexp(-1.543000000000000e+04 / (Rc * T))
         kfh=1.210000000000000e+32 * (T ** -6.32) * dexp(-1.619000000000000e+04 / (Rc * T)) + 9.210000000000000e+08 * (T ** 0.25) * dexp(-8.553000000000000e+02 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.210000000000000e+32 * (T ** -6.32) * dexp(-1.619000000000000e+04 / (Rc * T)) + 9.210000000000000e+08 * (T ** 0.25) * dexp(-8.553000000000000e+02 / (Rc * T))
         kfh=1.210000000000000e+32 * (T ** -6.32) * dexp(-1.619000000000000e+04 / (Rc * T)) + 9.210000000000000e+08 * (T ** 0.25) * dexp(-8.553000000000000e+02 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(28) * EG(3))/(EG(14) * EG(10))))
     rr = kf * (C(28) * C(3)) - kb * (C(14) * C(10))
@@ -3702,36 +3720,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(9) = wdot(9) + rr
 
     ! Reaction C2H2 + OH <=> CH2CO + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=1.578000000000000e+03 * (T ** 2.56) * dexp(9.445000000000000e+02 / (Rc * T))
         kfh=1.578000000000000e+03 * (T ** 2.56) * dexp(9.445000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.518000000000000e+04 * (T ** 2.28) * dexp(3.921000000000000e+02 / (Rc * T))
         kfh=3.017000000000000e+05 * (T ** 1.92) * dexp(-5.980999999999999e+02 / (Rc * T))
         logPl=1.013979409037662e+01
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=3.017000000000000e+05 * (T ** 1.92) * dexp(-5.980999999999999e+02 / (Rc * T))
         kfh=7.528000000000000e+06 * (T ** 1.55) * dexp(-2.106000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=7.528000000000000e+06 * (T ** 1.55) * dexp(-2.106000000000000e+03 / (Rc * T))
         kfh=5.101000000000000e+06 * (T ** 1.65) * dexp(-3.400000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=5.101000000000000e+06 * (T ** 1.65) * dexp(-3.400000000000000e+03 / (Rc * T))
         kfh=1.457000000000000e+04 * (T ** 2.45) * dexp(-4.477000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=1.457000000000000e+04 * (T ** 2.45) * dexp(-4.477000000000000e+03 / (Rc * T))
         kfh=1.457000000000000e+04 * (T ** 2.45) * dexp(-4.477000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(29) * EG(6))/(EG(30) * EG(2))))
     rr = kf * (C(29) * C(6)) - kb * (C(30) * C(2))
@@ -3741,36 +3760,37 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(2) = wdot(2) + rr
 
     ! Reaction C2H2 + OH <=> CH3 + CO
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=4.757000000000000e+05 * (T ** 1.68) * dexp(4.298000000000000e+02 / (Rc * T))
         kfh=4.757000000000000e+05 * (T ** 1.68) * dexp(4.298000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=4.372000000000000e+06 * (T ** 1.4) * dexp(-2.265000000000000e+02 / (Rc * T))
         kfh=7.648000000000000e+07 * (T ** 1.05) * dexp(-1.115000000000000e+03 / (Rc * T))
         logPl=1.013979409037662e+01
         logPh=1.152608845149651e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=7.648000000000000e+07 * (T ** 1.05) * dexp(-1.115000000000000e+03 / (Rc * T))
         kfh=1.277000000000000e+09 * (T ** 0.73) * dexp(-2.579000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.277000000000000e+09 * (T ** 0.73) * dexp(-2.579000000000000e+03 / (Rc * T))
         kfh=4.312000000000000e+08 * (T ** 0.92) * dexp(-3.736000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=4.312000000000000e+08 * (T ** 0.92) * dexp(-3.736000000000000e+03 / (Rc * T))
         kfh=8.250000000000001e+05 * (T ** 1.77) * dexp(-4.697000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=8.250000000000001e+05 * (T ** 1.77) * dexp(-4.697000000000000e+03 / (Rc * T))
         kfh=8.250000000000001e+05 * (T ** 1.77) * dexp(-4.697000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(29) * EG(6))/(EG(14) * EG(9))))
     rr = kf * (C(29) * C(6)) - kb * (C(14) * C(9))
@@ -3798,48 +3818,49 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(31) = wdot(31) + rr
 
     ! Reaction C2H2 + HO2 => CH2O + CO + H
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=9.100000000000000e+13 * (T ** -1.17) * dexp(-1.375000000000000e+04 / (Rc * T)) + 1.970000000000000e+01 * (T ** 2.56) * dexp(-7.382000000000000e+03 / (Rc * T))
         kfh=9.100000000000000e+13 * (T ** -1.17) * dexp(-1.375000000000000e+04 / (Rc * T)) + 1.970000000000000e+01 * (T ** 2.56) * dexp(-7.382000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=9.940000000000000e+00 * (T ** 2.64) * dexp(-7.253000000000000e+03 / (Rc * T)) + 3.630000000000000e+13 * (T ** -1.05) * dexp(-1.352000000000000e+04 / (Rc * T))
         kfh=6.050000000000001e-06 * (T ** 4.34) * dexp(-4.525000000000000e+03 / (Rc * T)) + 1.610000000000000e+10 * dexp(-1.172000000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=6.050000000000001e-06 * (T ** 4.34) * dexp(-4.525000000000000e+03 / (Rc * T)) + 1.610000000000000e+10 * dexp(-1.172000000000000e+04 / (Rc * T))
         kfh=7.770000000000000e+102 * (T ** -24.18) * dexp(-1.386000000000000e+05 / (Rc * T)) + 1.880000000000000e+08 * (T ** 0.6) * dexp(-1.085000000000000e+04 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=7.770000000000000e+102 * (T ** -24.18) * dexp(-1.386000000000000e+05 / (Rc * T)) + 1.880000000000000e+08 * (T ** 0.6) * dexp(-1.085000000000000e+04 / (Rc * T))
         kfh=1.220000000000000e+16 * (T ** -1.75) * dexp(-1.518000000000000e+04 / (Rc * T)) + 8.260000000000000e+00 * (T ** 2.69) * dexp(-8.025000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.220000000000000e+16 * (T ** -1.75) * dexp(-1.518000000000000e+04 / (Rc * T)) + 8.260000000000000e+00 * (T ** 2.69) * dexp(-8.025000000000000e+03 / (Rc * T))
         kfh=1.710000000000000e+36 * (T ** -7.77) * dexp(-2.697000000000000e+04 / (Rc * T)) + 2.300000000000000e+07 * (T ** 0.91) * dexp(-1.171000000000000e+04 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=1.710000000000000e+36 * (T ** -7.77) * dexp(-2.697000000000000e+04 / (Rc * T)) + 2.300000000000000e+07 * (T ** 0.91) * dexp(-1.171000000000000e+04 / (Rc * T))
         kfh=4.140000000000001e+28 * (T ** -5.3) * dexp(-2.513000000000000e+04 / (Rc * T)) + 4.190000000000000e+04 * (T ** 1.7) * dexp(-1.125000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=4.140000000000001e+28 * (T ** -5.3) * dexp(-2.513000000000000e+04 / (Rc * T)) + 4.190000000000000e+04 * (T ** 1.7) * dexp(-1.125000000000000e+04 / (Rc * T))
         kfh=5.770000000000000e+16 * (T ** -1.7) * dexp(-2.003000000000000e+04 / (Rc * T)) + 1.010000000000000e-05 * (T ** 4.31) * dexp(-6.829000000000000e+03 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=5.770000000000000e+16 * (T ** -1.7) * dexp(-2.003000000000000e+04 / (Rc * T)) + 1.010000000000000e-05 * (T ** 4.31) * dexp(-6.829000000000000e+03 / (Rc * T))
         kfh=5.770000000000000e+16 * (T ** -1.7) * dexp(-2.003000000000000e+04 / (Rc * T)) + 1.010000000000000e-05 * (T ** 4.31) * dexp(-6.829000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C(29) * C(8)) - kb * (C(22) * C(9) * C(2))
     wdot(29) = wdot(29) - rr
     wdot(8) = wdot(8) - rr
@@ -3910,48 +3931,49 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(9) = wdot(9) + rr
 
     ! Reaction CH2CO + OH => CH3 + CO2
-    if P < 1.013250000000000e+02:
+    if (P < 1.013250000000000e+02) then
         kfl=1.170000000000000e+12 * (T ** -0.11) * dexp(-3.670000000000000e+01 / (Rc * T)) + 3.610000000000001e-15 * (T ** -15.54) * dexp(10.058000000000000e+04 / (Rc * T))
         kfh=1.170000000000000e+12 * (T ** -0.11) * dexp(-3.670000000000000e+01 / (Rc * T)) + 3.610000000000001e-15 * (T ** -15.54) * dexp(10.058000000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=4.618333172514372e+00
-    elif P < 1.013250000000000e+04:
+    else if (P < 1.013250000000000e+04) then
         kfl=1.170000000000000e+12 * (T ** -0.11) * dexp(-3.640000000000000e+01 / (Rc * T)) + 2.810000000000000e-07 * (T ** -0.8) * dexp(3.658000000000000e+04 / (Rc * T))
         kfh=1.540000000000000e+12 * (T ** -0.15) * dexp(-1.334000000000000e+02 / (Rc * T)) + 1.340000000000000e-08 * (T ** -0.62) * dexp(3.788000000000000e+04 / (Rc * T))
         logPl=6.920918265508418e+00
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.540000000000000e+12 * (T ** -0.15) * dexp(-1.334000000000000e+02 / (Rc * T)) + 1.340000000000000e-08 * (T ** -0.62) * dexp(3.788000000000000e+04 / (Rc * T))
         kfh=2.700000000000000e+25 * (T ** -3.95) * dexp(-9.988000000000000e+03 / (Rc * T)) + 3.060000000000000e+08 * (T ** 0.91) * dexp(-3.748000000000000e+02 / (Rc * T))
         logPl=9.223503358502464e+00
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=2.700000000000000e+25 * (T ** -3.95) * dexp(-9.988000000000000e+03 / (Rc * T)) + 3.060000000000000e+08 * (T ** 0.91) * dexp(-3.748000000000000e+02 / (Rc * T))
         kfh=4.640000000000000e+23 * (T ** -3.26) * dexp(-1.290000000000000e+04 / (Rc * T)) + 3.920000000000000e+05 * (T ** 1.68) * dexp(-4.316000000000000e+02 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 2.026499999999999e+07:
+    else if (P < 2.026499999999999e+07) then
         kfl=4.640000000000000e+23 * (T ** -3.26) * dexp(-1.290000000000000e+04 / (Rc * T)) + 3.920000000000000e+05 * (T ** 1.68) * dexp(-4.316000000000000e+02 / (Rc * T))
         kfh=4.580000000000001e+22 * (T ** -2.93) * dexp(-1.361000000000000e+04 / (Rc * T)) + 4.220000000000001e+04 * (T ** 1.93) * dexp(-3.485000000000000e+02 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.682440581804455e+01
-    elif P < 5.066250000000001e+07:
+    else if (P < 5.066250000000001e+07) then
         kfl=4.580000000000001e+22 * (T ** -2.93) * dexp(-1.361000000000000e+04 / (Rc * T)) + 4.220000000000001e+04 * (T ** 1.93) * dexp(-3.485000000000000e+02 / (Rc * T))
         kfh=1.700000000000000e+22 * (T ** -2.76) * dexp(-1.525000000000000e+04 / (Rc * T)) + 9.900000000000001e+02 * (T ** 2.38) * dexp(-1.964000000000000e+02 / (Rc * T))
         logPl=1.682440581804455e+01
         logPh=1.774069654991870e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.700000000000000e+22 * (T ** -2.76) * dexp(-1.525000000000000e+04 / (Rc * T)) + 9.900000000000001e+02 * (T ** 2.38) * dexp(-1.964000000000000e+02 / (Rc * T))
         kfh=9.590000000000001e+21 * (T ** -2.66) * dexp(-1.667000000000000e+04 / (Rc * T)) + 2.670000000000000e+01 * (T ** 2.83) * dexp(-3.000000000000000e+00 / (Rc * T))
         logPl=1.774069654991870e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=9.590000000000001e+21 * (T ** -2.66) * dexp(-1.667000000000000e+04 / (Rc * T)) + 2.670000000000000e+01 * (T ** 2.83) * dexp(-3.000000000000000e+00 / (Rc * T))
         kfh=9.590000000000001e+21 * (T ** -2.66) * dexp(-1.667000000000000e+04 / (Rc * T)) + 2.670000000000000e+01 * (T ** 2.83) * dexp(-3.000000000000000e+00 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
-    0
+    kb = 0.0
     rr = kf * (C(30) * C(6)) - kb * (C(14) * C(10))
     wdot(30) = wdot(30) - rr
     wdot(6) = wdot(6) - rr
@@ -4123,31 +4145,32 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(9) = wdot(9) + rr
 
     ! Reaction C2H4 + CH2(S) <=> C2H3 + CH3
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=1.770000000000000e+19 * (T ** -1.94) * dexp(-6.790000000000000e+03 / (Rc * T)) + 4.300000000000000e+12 * (T ** 0.19) * dexp(2.104100000000000e+02 / (Rc * T))
         kfh=1.770000000000000e+19 * (T ** -1.94) * dexp(-6.790000000000000e+03 / (Rc * T)) + 4.300000000000000e+12 * (T ** 0.19) * dexp(2.104100000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.680000000000000e+19 * (T ** -1.8) * dexp(-4.310000000000000e+03 / (Rc * T)) + 2.260000000000000e+11 * (T ** 0.54) * dexp(-4.781000000000000e+01 / (Rc * T))
         kfh=4.160000000000000e+24 * (T ** -3.19) * dexp(-9.760000000000000e+03 / (Rc * T)) + 4.920000000000000e+09 * (T ** 1.02) * dexp(-5.997699999999999e+02 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.382867354449055e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=4.160000000000000e+24 * (T ** -3.19) * dexp(-9.760000000000000e+03 / (Rc * T)) + 4.920000000000000e+09 * (T ** 1.02) * dexp(-5.997699999999999e+02 / (Rc * T))
         kfh=7.889999999999999e+24 * (T ** -3.07) * dexp(-1.390000000000000e+04 / (Rc * T)) + 1.470000000000000e+08 * (T ** 1.33) * dexp(-1.228400000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=7.889999999999999e+24 * (T ** -3.07) * dexp(-1.390000000000000e+04 / (Rc * T)) + 1.470000000000000e+08 * (T ** 1.33) * dexp(-1.228400000000000e+03 / (Rc * T))
         kfh=7.359999999999999e+29 * (T ** -4.28) * dexp(-2.380000000000000e+04 / (Rc * T)) + 8.110000000000000e+10 * (T ** 0.55) * dexp(-5.506500000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=7.359999999999999e+29 * (T ** -4.28) * dexp(-2.380000000000000e+04 / (Rc * T)) + 8.110000000000000e+10 * (T ** 0.55) * dexp(-5.506500000000000e+03 / (Rc * T))
         kfh=7.359999999999999e+29 * (T ** -4.28) * dexp(-2.380000000000000e+04 / (Rc * T)) + 8.110000000000000e+10 * (T ** 0.55) * dexp(-5.506500000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(27) * EG(16))/(EG(28) * EG(14))))
     rr = kf * (C(27) * C(16)) - kb * (C(28) * C(14))
@@ -4779,21 +4802,22 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(33) = wdot(33) + rr
 
     ! Reaction HCNO <=> HCN + O
-    if P < 1.013250000000001e+05:
+    if (P < 1.013250000000001e+05) then
         kfl=2.000000000000000e+30 * (T ** -6.03) * dexp(-6.073300000000000e+04 / (Rc * T))
         kfh=2.000000000000000e+30 * (T ** -6.03) * dexp(-6.073300000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=1.152608845149651e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=4.200000000000000e+31 * (T ** -6.12) * dexp(-6.121000000000000e+04 / (Rc * T))
         kfh=5.900000000000000e+31 * (T ** -5.85) * dexp(-6.193500000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    else:
+    else
         kfl=5.900000000000000e+31 * (T ** -5.85) * dexp(-6.193500000000000e+04 / (Rc * T))
         kfh=5.900000000000000e+31 * (T ** -5.85) * dexp(-6.193500000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(43))/(EG(32) * EG(4)* pfac)))
     rr = kf * (C(43)) - kb * (C(32) * C(4))
@@ -5200,51 +5224,52 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(50) = wdot(50) + rr
 
     ! Reaction CH + N2 <=> H + NCN
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=5.900000000000000e+08 * (T ** 1.06) * dexp(-1.596000000000000e+04 / (Rc * T))
         kfh=5.900000000000000e+08 * (T ** 1.06) * dexp(-1.596000000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=5.900000000000000e+08 * (T ** 1.06) * dexp(-1.595000000000000e+04 / (Rc * T))
         kfh=6.200000000000000e+08 * (T ** 1.05) * dexp(-1.596000000000000e+04 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=6.200000000000000e+08 * (T ** 1.05) * dexp(-1.596000000000000e+04 / (Rc * T))
         kfh=9.000000000000000e+08 * (T ** 1.01) * dexp(-1.612000000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=9.000000000000000e+08 * (T ** 1.01) * dexp(-1.612000000000000e+04 / (Rc * T))
         kfh=2.500000000000000e+09 * (T ** 0.89) * dexp(-1.662000000000000e+04 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=2.500000000000000e+09 * (T ** 0.89) * dexp(-1.662000000000000e+04 / (Rc * T))
         kfh=9.200000000000000e+09 * (T ** 0.75) * dexp(-1.741000000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=9.200000000000000e+09 * (T ** 0.75) * dexp(-1.741000000000000e+04 / (Rc * T))
         kfh=3.000000000000000e+10 * (T ** 0.62) * dexp(-1.848000000000000e+04 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=3.000000000000000e+10 * (T ** 0.62) * dexp(-1.848000000000000e+04 / (Rc * T))
         kfh=3.800000000000000e+10 * (T ** 0.62) * dexp(-1.946000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.800000000000000e+10 * (T ** 0.62) * dexp(-1.946000000000000e+04 / (Rc * T))
         kfh=9.500000000000000e+09 * (T ** 0.81) * dexp(-2.034000000000000e+04 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=9.500000000000000e+09 * (T ** 0.81) * dexp(-2.034000000000000e+04 / (Rc * T))
         kfh=9.500000000000000e+09 * (T ** 0.81) * dexp(-2.034000000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(18) * EG(50))/(EG(2) * EG(45))))
     rr = kf * (C(18) * C(50)) - kb * (C(2) * C(45))
@@ -5254,51 +5279,52 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(45) = wdot(45) + rr
 
     ! Reaction CH + N2 <=> HNCN
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=6.000000000000001e+23 * (T ** -4.41) * dexp(-1.441000000000000e+04 / (Rc * T))
         kfh=6.000000000000001e+23 * (T ** -4.41) * dexp(-1.441000000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=7.300000000000001e+23 * (T ** -4.3) * dexp(-1.476000000000000e+04 / (Rc * T))
         kfh=7.300000000000001e+23 * (T ** -4.17) * dexp(-1.520000000000000e+04 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=7.300000000000001e+23 * (T ** -4.17) * dexp(-1.520000000000000e+04 / (Rc * T))
         kfh=4.800000000000000e+23 * (T ** -4.0) * dexp(-1.557000000000000e+04 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=4.800000000000000e+23 * (T ** -4.0) * dexp(-1.557000000000000e+04 / (Rc * T))
         kfh=1.400000000000000e+23 * (T ** -3.74) * dexp(-1.582000000000000e+04 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=1.400000000000000e+23 * (T ** -3.74) * dexp(-1.582000000000000e+04 / (Rc * T))
         kfh=1.700000000000000e+22 * (T ** -3.38) * dexp(-1.584000000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.700000000000000e+22 * (T ** -3.38) * dexp(-1.584000000000000e+04 / (Rc * T))
         kfh=6.800000000000000e+20 * (T ** -2.9) * dexp(-1.569000000000000e+04 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=6.800000000000000e+20 * (T ** -2.9) * dexp(-1.569000000000000e+04 / (Rc * T))
         kfh=1.800000000000000e+19 * (T ** -2.37) * dexp(-1.543000000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.800000000000000e+19 * (T ** -2.37) * dexp(-1.543000000000000e+04 / (Rc * T))
         kfh=3.100000000000000e+17 * (T ** -1.78) * dexp(-1.524000000000000e+04 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=3.100000000000000e+17 * (T ** -1.78) * dexp(-1.524000000000000e+04 / (Rc * T))
         kfh=3.100000000000000e+17 * (T ** -1.78) * dexp(-1.524000000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(18) * EG(50))/(EG(46)* pfac**-1.0)))
     rr = kf * (C(18) * C(50)) - kb * (C(46))
@@ -5540,51 +5566,52 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(50) = wdot(50) + rr
 
     ! Reaction H + NCN <=> HNCN
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=3.900000000000000e+23 * (T ** -4.34) * dexp(-5.347000000000000e+03 / (Rc * T))
         kfh=3.900000000000000e+23 * (T ** -4.34) * dexp(-5.347000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=3.300000000000000e+25 * (T ** -4.71) * dexp(-4.102000000000000e+03 / (Rc * T))
         kfh=5.600000000000001e+27 * (T ** -5.13) * dexp(-3.741000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=5.600000000000001e+27 * (T ** -5.13) * dexp(-3.741000000000000e+03 / (Rc * T))
         kfh=1.700000000000000e+29 * (T ** -5.36) * dexp(-3.947000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.700000000000000e+29 * (T ** -5.36) * dexp(-3.947000000000000e+03 / (Rc * T))
         kfh=1.500000000000000e+30 * (T ** -5.43) * dexp(-4.415000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=1.500000000000000e+30 * (T ** -5.43) * dexp(-4.415000000000000e+03 / (Rc * T))
         kfh=2.600000000000000e+30 * (T ** -5.34) * dexp(-4.870000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=2.600000000000000e+30 * (T ** -5.34) * dexp(-4.870000000000000e+03 / (Rc * T))
         kfh=1.200000000000000e+30 * (T ** -5.09) * dexp(-5.275000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=1.200000000000000e+30 * (T ** -5.09) * dexp(-5.275000000000000e+03 / (Rc * T))
         kfh=1.900000000000000e+29 * (T ** -4.72) * dexp(-5.476000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.900000000000000e+29 * (T ** -4.72) * dexp(-5.476000000000000e+03 / (Rc * T))
         kfh=5.100000000000000e+27 * (T ** -4.15) * dexp(-5.370000000000000e+03 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=5.100000000000000e+27 * (T ** -4.15) * dexp(-5.370000000000000e+03 / (Rc * T))
         kfh=5.100000000000000e+27 * (T ** -4.15) * dexp(-5.370000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(2) * EG(45))/(EG(46)* pfac**-1.0)))
     rr = kf * (C(2) * C(45)) - kb * (C(46))
@@ -5593,51 +5620,52 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(46) = wdot(46) + rr
 
     ! Reaction H + NCN <=> HCN + N
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.321000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.322000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=2.200000000000000e+11 * (T ** 0.71) * dexp(-5.322000000000000e+03 / (Rc * T))
         kfh=2.300000000000000e+11 * (T ** 0.7) * dexp(-5.327000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=2.300000000000000e+11 * (T ** 0.7) * dexp(-5.327000000000000e+03 / (Rc * T))
         kfh=2.500000000000000e+11 * (T ** 0.69) * dexp(-5.371000000000000e+03 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=2.500000000000000e+11 * (T ** 0.69) * dexp(-5.371000000000000e+03 / (Rc * T))
         kfh=2.500000000000000e+11 * (T ** 0.69) * dexp(-5.371000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(2) * EG(45))/(EG(32) * EG(36))))
     rr = kf * (C(2) * C(45)) - kb * (C(32) * C(36))
@@ -5647,51 +5675,52 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(36) = wdot(36) + rr
 
     ! Reaction H + NCN <=> HNC + N
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=3.900000000000000e-04 * (T ** 4.7) * dexp(-2.440000000000000e+03 / (Rc * T))
         kfh=3.900000000000000e-04 * (T ** 4.7) * dexp(-2.440000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=3.900000000000000e-04 * (T ** 4.7) * dexp(-2.440000000000000e+03 / (Rc * T))
         kfh=4.000000000000000e-04 * (T ** 4.7) * dexp(-2.440000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=4.000000000000000e-04 * (T ** 4.7) * dexp(-2.440000000000000e+03 / (Rc * T))
         kfh=4.000000000000000e-04 * (T ** 4.7) * dexp(-2.438000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=4.000000000000000e-04 * (T ** 4.7) * dexp(-2.438000000000000e+03 / (Rc * T))
         kfh=4.300000000000000e-04 * (T ** 4.69) * dexp(-2.434000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=4.300000000000000e-04 * (T ** 4.69) * dexp(-2.434000000000000e+03 / (Rc * T))
         kfh=4.900000000000000e-04 * (T ** 4.67) * dexp(-2.423000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=4.900000000000000e-04 * (T ** 4.67) * dexp(-2.423000000000000e+03 / (Rc * T))
         kfh=7.100000000000000e-04 * (T ** 4.62) * dexp(-2.408000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=7.100000000000000e-04 * (T ** 4.62) * dexp(-2.408000000000000e+03 / (Rc * T))
         kfh=1.700000000000000e-03 * (T ** 4.52) * dexp(-2.622000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=1.700000000000000e-03 * (T ** 4.52) * dexp(-2.622000000000000e+03 / (Rc * T))
         kfh=9.599999999999999e-03 * (T ** 4.32) * dexp(-3.641000000000000e+03 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=9.599999999999999e-03 * (T ** 4.32) * dexp(-3.641000000000000e+03 / (Rc * T))
         kfh=9.599999999999999e-03 * (T ** 4.32) * dexp(-3.641000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(2) * EG(45))/(EG(40) * EG(36))))
     rr = kf * (C(2) * C(45)) - kb * (C(40) * C(36))
@@ -5710,56 +5739,57 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(49) = wdot(49) + rr
 
     ! Reaction NCN + OH <=> NCO + NH
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=8.600000000000000e+14 * (T ** -0.95) * dexp(-7.340000000000000e+02 / (Rc * T))
         kfh=8.600000000000000e+14 * (T ** -0.95) * dexp(-7.340000000000000e+02 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 5.066250000000003e+04:
+    else if (P < 5.066250000000003e+04) then
         kfl=2.600000000000000e+15 * (T ** -1.08) * dexp(-1.128000000000000e+03 / (Rc * T))
         kfh=5.400000000000000e+15 * (T ** -1.17) * dexp(-1.391000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.083294127093656e+01
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=5.400000000000000e+15 * (T ** -1.17) * dexp(-1.391000000000000e+03 / (Rc * T))
         kfh=1.700000000000000e+16 * (T ** -1.3) * dexp(-1.843000000000000e+03 / (Rc * T))
         logPl=1.083294127093656e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=1.700000000000000e+16 * (T ** -1.3) * dexp(-1.843000000000000e+03 / (Rc * T))
         kfh=1.400000000000000e+17 * (T ** -1.55) * dexp(-2.791000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.400000000000000e+17 * (T ** -1.55) * dexp(-2.791000000000000e+03 / (Rc * T))
         kfh=1.700000000000000e+18 * (T ** -1.83) * dexp(-4.143000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=1.700000000000000e+18 * (T ** -1.83) * dexp(-4.143000000000000e+03 / (Rc * T))
         kfh=1.000000000000000e+19 * (T ** -2.03) * dexp(-5.607000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.000000000000000e+19 * (T ** -2.03) * dexp(-5.607000000000000e+03 / (Rc * T))
         kfh=2.200000000000000e+19 * (T ** -2.08) * dexp(-7.339000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=2.200000000000000e+19 * (T ** -2.08) * dexp(-7.339000000000000e+03 / (Rc * T))
         kfh=6.400000000000000e+18 * (T ** -1.88) * dexp(-8.866000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=6.400000000000000e+18 * (T ** -1.88) * dexp(-8.866000000000000e+03 / (Rc * T))
         kfh=6.300000000000000e+16 * (T ** -1.25) * dexp(-1.022000000000000e+04 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=6.300000000000000e+16 * (T ** -1.25) * dexp(-1.022000000000000e+04 / (Rc * T))
         kfh=6.300000000000000e+16 * (T ** -1.25) * dexp(-1.022000000000000e+04 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(45) * EG(6))/(EG(44) * EG(35))))
     rr = kf * (C(45) * C(6)) - kb * (C(44) * C(35))
@@ -5769,56 +5799,57 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(35) = wdot(35) + rr
 
     ! Reaction NCN + OH <=> HCN + NO
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=2.900000000000000e+05 * (T ** 2.04) * dexp(-1.505000000000000e+03 / (Rc * T))
         kfh=2.900000000000000e+05 * (T ** 2.04) * dexp(-1.505000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 5.066250000000003e+04:
+    else if (P < 5.066250000000003e+04) then
         kfl=6.900000000000000e+05 * (T ** 1.94) * dexp(-1.748000000000000e+03 / (Rc * T))
         kfh=1.200000000000000e+06 * (T ** 1.87) * dexp(-1.902000000000000e+03 / (Rc * T))
         logPl=1.032211564717057e+01
         logPh=1.083294127093656e+01
-    elif P < 1.013250000000001e+05:
+    else if (P < 1.013250000000001e+05) then
         kfl=1.200000000000000e+06 * (T ** 1.87) * dexp(-1.902000000000000e+03 / (Rc * T))
         kfh=2.900000000000000e+06 * (T ** 1.76) * dexp(-2.163000000000000e+03 / (Rc * T))
         logPl=1.083294127093656e+01
         logPh=1.152608845149651e+01
-    elif P < 3.039750000000000e+05:
+    else if (P < 3.039750000000000e+05) then
         kfl=2.900000000000000e+06 * (T ** 1.76) * dexp(-2.163000000000000e+03 / (Rc * T))
         kfh=1.900000000000000e+07 * (T ** 1.54) * dexp(-2.727000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.262470074016462e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=1.900000000000000e+07 * (T ** 1.54) * dexp(-2.727000000000000e+03 / (Rc * T))
         kfh=2.600000000000000e+08 * (T ** 1.22) * dexp(-3.593000000000000e+03 / (Rc * T))
         logPl=1.262470074016462e+01
         logPh=1.382867354449055e+01
-    elif P < 3.039749999999998e+06:
+    else if (P < 3.039749999999998e+06) then
         kfl=2.600000000000000e+08 * (T ** 1.22) * dexp(-3.593000000000000e+03 / (Rc * T))
         kfh=4.100000000000000e+09 * (T ** 0.89) * dexp(-4.623999999999999e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.492728583315866e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=4.100000000000000e+09 * (T ** 0.89) * dexp(-4.623999999999999e+03 / (Rc * T))
         kfh=7.100000000000000e+10 * (T ** 0.56) * dexp(-5.985000000000000e+03 / (Rc * T))
         logPl=1.492728583315866e+01
         logPh=1.613125863748460e+01
-    elif P < 3.039750000000001e+07:
+    else if (P < 3.039750000000001e+07) then
         kfl=7.100000000000000e+10 * (T ** 0.56) * dexp(-5.985000000000000e+03 / (Rc * T))
         kfh=3.900000000000000e+11 * (T ** 0.38) * dexp(-7.329000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.722987092615271e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.900000000000000e+11 * (T ** 0.38) * dexp(-7.329000000000000e+03 / (Rc * T))
         kfh=2.600000000000000e+11 * (T ** 0.48) * dexp(-8.655000000000000e+03 / (Rc * T))
         logPl=1.722987092615271e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=2.600000000000000e+11 * (T ** 0.48) * dexp(-8.655000000000000e+03 / (Rc * T))
         kfh=2.600000000000000e+11 * (T ** 0.48) * dexp(-8.655000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(45) * EG(6))/(EG(32) * EG(49))))
     rr = kf * (C(45) * C(6)) - kb * (C(32) * C(49))
@@ -5945,21 +5976,22 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(48) = wdot(48) + rr
 
     ! Reaction H2CN <=> H + HCN
-    if P < 1.013250000000001e+05:
+    if (P < 1.013250000000001e+05) then
         kfl=1.300000000000000e+29 * (T ** -6.03) * dexp(-2.989400000000000e+04 / (Rc * T))
         kfh=1.300000000000000e+29 * (T ** -6.03) * dexp(-2.989400000000000e+04 / (Rc * T))
         logPl=1.0
         logPh=1.152608845149651e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=6.000000000000000e+31 * (T ** -6.46) * dexp(-3.211000000000000e+04 / (Rc * T))
         kfh=3.500000000000000e+29 * (T ** -5.46) * dexp(-3.254700000000000e+04 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    else:
+    else
         kfl=3.500000000000000e+29 * (T ** -5.46) * dexp(-3.254700000000000e+04 / (Rc * T))
         kfh=3.500000000000000e+29 * (T ** -5.46) * dexp(-3.254700000000000e+04 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(48))/(EG(2) * EG(32)* pfac)))
     rr = kf * (C(48)) - kb * (C(2) * C(32))
@@ -5986,21 +6018,22 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(6) = wdot(6) + rr
 
     ! Reaction H2CN + OH <=> H2O + HCN
-    if P < 1.013250000000001e+05:
+    if (P < 1.013250000000001e+05) then
         kfl=2.100000000000000e+17 * (T ** -1.68) * dexp(-3.180000000000000e+02 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         kfh=2.100000000000000e+17 * (T ** -1.68) * dexp(-3.180000000000000e+02 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=1.152608845149651e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=1.500000000000000e+19 * (T ** -2.18) * dexp(-2.166000000000000e+03 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         kfh=9.500000000000001e+21 * (T ** -2.91) * dexp(-5.633000000000000e+03 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.613125863748460e+01
-    else:
+    else
         kfl=9.500000000000001e+21 * (T ** -2.91) * dexp(-5.633000000000000e+03 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         kfh=9.500000000000001e+21 * (T ** -2.91) * dexp(-5.633000000000000e+03 / (Rc * T)) + 1.200000000000000e+06 * (T ** 2.0) * dexp(2.192000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(48) * EG(6))/(EG(5) * EG(32))))
     rr = kf * (C(48) * C(6)) - kb * (C(5) * C(32))
@@ -6037,46 +6070,47 @@ subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)
     wdot(6) = wdot(6) + rr
 
     ! Reaction HNO + OH <=> H2O + NO
-    if P < 1.013250000000000e+04:
+    if (P < 1.013250000000000e+04) then
         kfl=5.820000000000000e+10 * (T ** 0.4) * dexp(-3.762000000000000e+03 / (Rc * T))
         kfh=5.820000000000000e+10 * (T ** 0.4) * dexp(-3.762000000000000e+03 / (Rc * T))
         logPl=1.0
         logPh=9.223503358502464e+00
-    elif P < 3.201869999999998e+05:
+    else if (P < 3.201869999999998e+05) then
         kfl=5.850000000000000e+10 * (T ** 0.4) * dexp(-3.763000000000000e+03 / (Rc * T))
         kfh=5.920000000000000e+10 * (T ** 0.4) * dexp(-3.764000000000000e+03 / (Rc * T))
         logPl=1.152608845149651e+01
         logPh=1.267666047909533e+01
-    elif P < 1.013250000000000e+06:
+    else if (P < 1.013250000000000e+06) then
         kfl=5.920000000000000e+10 * (T ** 0.4) * dexp(-3.764000000000000e+03 / (Rc * T))
         kfh=6.300000000000000e+10 * (T ** 0.39) * dexp(-3.782000000000000e+03 / (Rc * T))
         logPl=1.267666047909533e+01
         logPh=1.382867354449055e+01
-    elif P < 3.201870000000002e+06:
+    else if (P < 3.201870000000002e+06) then
         kfl=6.300000000000000e+10 * (T ** 0.39) * dexp(-3.782000000000000e+03 / (Rc * T))
         kfh=9.530000000000000e+10 * (T ** 0.34) * dexp(-3.931000000000000e+03 / (Rc * T))
         logPl=1.382867354449055e+01
         logPh=1.497924557208938e+01
-    elif P < 1.013249999999999e+07:
+    else if (P < 1.013249999999999e+07) then
         kfl=9.530000000000000e+10 * (T ** 0.34) * dexp(-3.931000000000000e+03 / (Rc * T))
         kfh=2.600000000000000e+11 * (T ** 0.23) * dexp(-4.413000000000000e+03 / (Rc * T))
         logPl=1.497924557208938e+01
         logPh=1.613125863748460e+01
-    elif P < 3.201870000000000e+07:
+    else if (P < 3.201870000000000e+07) then
         kfl=2.600000000000000e+11 * (T ** 0.23) * dexp(-4.413000000000000e+03 / (Rc * T))
         kfh=3.830000000000000e+11 * (T ** 0.2) * dexp(-5.099000000000000e+03 / (Rc * T))
         logPl=1.613125863748460e+01
         logPh=1.728183066508342e+01
-    elif P < 1.013249999999999e+08:
+    else if (P < 1.013249999999999e+08) then
         kfl=3.830000000000000e+11 * (T ** 0.2) * dexp(-5.099000000000000e+03 / (Rc * T))
         kfh=4.180000000000000e+10 * (T ** 0.51) * dexp(-5.532000000000000e+03 / (Rc * T))
         logPl=1.728183066508342e+01
         logPh=1.843384373047865e+01
-    else:
+    else
         kfl=4.180000000000000e+10 * (T ** 0.51) * dexp(-5.532000000000000e+03 / (Rc * T))
         kfh=4.180000000000000e+10 * (T ** 0.51) * dexp(-5.532000000000000e+03 / (Rc * T))
         logPl=1.843384373047865e+01
         logPh=100.0
+    end if
     kf = dexp(dlog(kfl) + (dlog(kfh)-dlog(kfl))*(dlog(P)-logPl)/(logPh-logPl))
     kb = kf * (((EG(37) * EG(6))/(EG(5) * EG(49))))
     rr = kf * (C(37) * C(6)) - kb * (C(5) * C(49))
