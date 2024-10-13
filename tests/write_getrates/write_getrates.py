@@ -17,7 +17,7 @@ ckp = ckparser()
 chem = chemistry(ck_file,ckp,therm_file=therm_file)
 
 for vec,ext_vec in zip([True,False],["_i",""]):
-    for lang,ext in zip(["fortran","python"],["f","py"]):
+    for lang,ext in zip(["fortran","python"],["f90","py"]):
         chem_expr =chemistry_expressions(chem,vec=vec,language=lang)
         filename = os.path.join(os.path.dirname(abs_path),f"getrates{ext_vec}.{ext}")
         chem_expr.write_expressions_to_file(filename)

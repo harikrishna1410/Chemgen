@@ -1,6 +1,7 @@
 import numpy as np
 import cantera as ct
-from getrates_i import getrates
+from getrates import getrates as getrates_python
+from getrates_ftn_module import getrates as getrates_ftn
 
 # Set up initial conditions
 phi = 1.0
@@ -9,6 +10,7 @@ P = ct.one_atm  # 1 atm
 
 # Create gas object
 gas = ct.Solution('CH4_NUI_sk50.yaml')
+# gas = ct.Solution('H2_burke.yaml')
 
 # Set the gas state
 gas.set_equivalence_ratio(phi, 'H2', 'O2:1.0, N2:3.76')
@@ -40,11 +42,24 @@ print(Y)
 
 P_cgs = P * 10  # Convert from Pa to dyne/cm^2
 veclen = 10
-wdot = np.zeros((veclen,gas.n_species))
-kf, kb, rr = getrates(veclen,np.array([T]*veclen), np.stack([Y]*veclen,axis=0), np.array([P_cgs]*veclen), wdot)
+wdot_ftn = np.zeros_like(Y)
+wdot_python = np.zeros_like(Y)
+ickwrk = np.zeros((10,))
+rckwrk = np.zeros((10,))
+wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
+getrates_python(T, Y, P_cgs , wdot_python)
 
-print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
-custom_wdot.append(wdot[0].ravel())
+# print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
+custom_wdot.append(wdot_ftn)
+custom_wdot.append(wdot_python)
+
+# P_cgs = P * 10  # Convert from Pa to dyne/cm^2
+# veclen = 10
+# wdot = np.zeros((veclen,gas.n_species))
+# kf, kb, rr = getrates(veclen,np.array([T]*veclen), np.stack([Y]*veclen,axis=0), np.array([P_cgs]*veclen), wdot)
+
+# print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
+# custom_wdot.append(wdot[0].ravel())
 
 # cantera_wdot.append(gas.net_production_rates)
 # # Run simulation
@@ -86,7 +101,7 @@ def compare_wdot(cantera_wdot, custom_wdot, tolerance=1e-6):
     # Print detailed comparison for the last time step
     print("\nDetailed comparison for the last time step:")
     species_names = gas.species_names
-    for i, (cw, custw) in enumerate(zip(cantera_wdot[-1], custom_wdot[-1])):
+    for i, (cw, custw) in enumerate(zip(cantera_wdot[0], custom_wdot)):
         print(f"Species {species_names[i]}:")
         print(f"  Cantera wdot: {cw:.4e}")
         print(f"  Custom wdot:  {custw:.4e}")
@@ -94,4 +109,7 @@ def compare_wdot(cantera_wdot, custom_wdot, tolerance=1e-6):
         print()
 
 # Run comparison
-compare_wdot(cantera_wdot, custom_wdot)
+print("ftn error")
+compare_wdot(cantera_wdot, custom_wdot[0])
+# print("python error")
+# compare_wdot(cantera_wdot, custom_wdot[1])

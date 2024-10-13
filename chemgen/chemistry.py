@@ -235,7 +235,7 @@ class chemistry_expressions:
             molecular_weight = self.chem.species_dict[sp].molecular_weight
             self.ytoc_expr.append(
                 f"C[{reduced_index}] = Y[{reduced_index}] / "
-                f"({molecular_weight:.15e})"
+                f"{molecular_weight:.15e}"
             )
         self.ytoc_expr.append(f"ctot = 0.0")
         self.ytoc_expr.append(f"for i in range({self.chem.n_species_red}):")
@@ -258,11 +258,11 @@ class chemistry_expressions:
         if reaction["type"] == "third_body":
             A, beta, Ea = reaction['arh']
             expr["kf"] = f"{A:.15e}" \
-                    + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
+                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
                     + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"(ctot " + ("+" if len(reaction["third_body"]) > 0 else "") \
-                        + "+".join([f"{eff:.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
+                        + " ".join([("+" if eff > 0.0 else "-")+f"{abs(eff):.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
                          + f")*(kf * ({reactants_expr}) - kb * ({products_expr}))"
         elif reaction["type"] == "troe":
             A, beta, Ea = reaction['arh']
@@ -272,20 +272,21 @@ class chemistry_expressions:
             T2 = troe_params[3] if len(troe_params) > 3 else 0.0
             expr["M"] = "ctot"
             if reaction["third_body"]:
-                expr["M"] += " + " + " + ".join([f"{eff:.15e}*C[{self.chem.reduced_species_index(sp)}]" for sp, eff in reaction["third_body"].items()])
+                expr["M"] += " ".join([("+" if eff > 0.0 else "-")+ f"{abs(eff):.15e}*C[{self.chem.reduced_species_index(sp)}]" for sp, eff in reaction["third_body"].items()])
             expr["k0"] = f"{A0:.15e}" \
-                        + (f" * (T ** {beta0})" if abs(beta0) > 0.0 else "") \
-                        + f" * np.exp(-{Ea0:.15e} / (Rc * T))"
+                        + (f" * (T ** ({beta0}))" if abs(beta0) > 0.0 else "") \
+                        + f" * np.exp({-Ea0:.15e} / (Rc * T))"
             expr["kinf"] = f"{A:.15e}" \
-                    + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
+                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
                     + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["Pr"] = f"(k0 * M) / kinf"
-            expr["Fcent"] = f"(1-{a}) * np.exp(-T/{T3}) + {a} * np.exp(-T/{T1})"
+            expr["Fcent"] = (f"(1-{abs(a):.15e})" if a > 0.0 else f"(1+{abs(a):.15e})" ) \
+                            +f" * np.exp(-T/({T3:.15e})) + ({a:.15e}) * np.exp(-T/({T1:.15e}))"
             if T2 > 0:
-                expr["Fcent"] += f" + np.exp(-{T2}/T)"
-            expr["C1"] = f"-0.4 - 0.67 * np.log10(Fcent)"
-            expr["N"] = f"0.75 - 1.27 * np.log10(Fcent)"
-            expr["F1"] = f"(np.log10(Pr) + C1) / (N - 0.14 * (np.log10(Pr) + C1))"
+                expr["Fcent"] += f" + np.exp({-T2:.15e}/T)"
+            expr["C1"] = f"-0.4e0 - 0.67e0 * np.log10(Fcent)"
+            expr["N"] = f"0.75e0 - 1.27e0 * np.log10(Fcent)"
+            expr["F1"] = f"(np.log10(Pr) + C1) / (N - 0.14e0 * (np.log10(Pr) + C1))"
             expr["F"] = f"10 ** (np.log10(Fcent) / (1 + F1**2))"
             expr["kf"] = f"kinf * (Pr / (1 + Pr)) * F"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
@@ -293,7 +294,7 @@ class chemistry_expressions:
         elif reaction["type"] == "standard":    
             A, beta, Ea = reaction['arh']
             expr["kf"] = f"{A:.15e}" \
-                    + (f" * (T ** {beta})" if abs(beta) > 0.0 else "") \
+                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
                     + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
             expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
@@ -308,7 +309,7 @@ class chemistry_expressions:
             # Build kf strings for each unique pressure point
             kf_strings = {}
             for pressure, conditions in pressure_points.items():
-                kf_sum = " + ".join([f"{c[1]:.15e}" + (f" * (T ** {c[2]})" if abs(c[2]) > 0.0 else "") + f" * np.exp({-c[3]:.15e} / (Rc * T))" for c in conditions])
+                kf_sum = " + ".join([f"{c[1]:.15e}" + (f" * (T ** ({c[2]}))" if abs(c[2]) > 0.0 else "") + f" * np.exp({-c[3]:.15e} / (Rc * T))" for c in conditions])
                 kf_strings[pressure] = kf_sum
 
             # Sort pressure points
@@ -321,7 +322,7 @@ class chemistry_expressions:
                     expr[f"if P < {p:.15e}:"] = [f"if P < {p:.15e}:"]
                     expr[f"if P < {p:.15e}:"].append(f"    kfl={kf_strings[p]}")
                     expr[f"if P < {p:.15e}:"].append(f"    kfh={kf_strings[p]}")
-                    expr[f"if P < {p:.15e}:"].append(f"    logPl=1.0")
+                    expr[f"if P < {p:.15e}:"].append(f"    logPl=1.0e0")
                     expr[f"if P < {p:.15e}:"].append(f"    logPh={np.log(p):.15e}")
                 elif i < len(sorted_pressures) - 1:
                     expr[f"elif P < {sorted_pressures[i+1]:.15e}:"] = [f"elif P < {sorted_pressures[i+1]:.15e}:"]
@@ -335,7 +336,7 @@ class chemistry_expressions:
             expr["else:"].append(f"    kfl={kf_strings[last_p]}")
             expr["else:"].append(f"    kfh={kf_strings[last_p]}")
             expr["else:"].append(f"    logPl={np.log(last_p):.15e}")
-            expr["else:"].append(f"    logPh=100.0")
+            expr["else:"].append(f"    logPh=100.0e0")
 
             expr["kf"] = "np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0.0"
@@ -357,7 +358,7 @@ class chemistry_expressions:
             if(sum(products_dict.values())-sum(reactants_dict.values()) == 1):
                 pfac = f"* pfac"
             else:
-                pfac = f"* pfac**{sum(products_dict.values())-sum(reactants_dict.values()):0.1f}"
+                pfac = f"* pfac**({sum(products_dict.values())-sum(reactants_dict.values()):0.1f})"
         else:
             pfac = ""
         return f"(({reactants})/({products}{pfac}))"
@@ -369,12 +370,12 @@ class chemistry_expressions:
         wdot_expressions = []
         for species_name, coeff in reaction["reacts"].items():
             species_idx = self.chem.reduced_species_index(species_name)
-            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"- {coeff:.2f} * rr" if coeff > 1.0 else "- rr")
+            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"- {coeff:.2e} * rr" if coeff > 1.0 else "- rr")
             wdot_expressions.append(wdot_expr)
         
         for species_name, coeff in reaction["prods"].items():
             species_idx = self.chem.reduced_species_index(species_name)
-            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"+ {coeff:.2f} * rr" if coeff > 1.0 else "+ rr")
+            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"+ {coeff:.2e} * rr" if coeff > 1.0 else "+ rr")
             wdot_expressions.append(wdot_expr)
         
         return wdot_expressions
@@ -536,11 +537,11 @@ class chemistry_expressions:
             # Convert Python-style expressions to Fortran
             expr = expr.replace("**", "**")
             expr = expr.replace("[", "(").replace("]", ")")
-            expr = expr.replace("np.exp", "dexp")
-            expr = expr.replace(":.15e", ":.15D0")
+            expr = expr.replace("np.exp", "exp")
+            expr = re.sub(r'(\d+)\.(\d*(?:[eE][-+]?\d+)?)', lambda m: f'{m.group(1)}.{m.group(2).replace("e", "D")}', expr)
             expr = expr.replace("\\", "&")
-            expr = expr.replace("np.log", "dlog")
-            expr = expr.replace("np.log10", "dlog10")
+            expr = expr.replace("np.log", "log")
+            expr = expr.replace("np.log10", "log10")
             # Handle if, elif, else, and for statements
             if expr.strip().startswith("if "):
                 condition = expr.strip()[3:-1]  # Remove 'if ' and ':'
@@ -565,25 +566,36 @@ class chemistry_expressions:
                 expr = f"do {loop_var} = {start}, {end}"
 
             # Increase all indices between parentheses by 1 using regex
-            def increment_index(match):
-                index = int(match.group(1))
-                return f"({index + 1}"
+            # The code appears to be correct, but there are a few potential improvements:
 
-            expr = re.sub(r'\((\d+)', increment_index, expr)
+            def increment_index(match):
+                array_name = match.group(1)
+                index = int(match.group(2))
+                if array_name in ['EG', 'C', 'Y', 'wdot']:
+                    return f"{array_name}({index + 1}"
+                return match.group(0)
+
+            expr = re.sub(r'(\w+)\((\d+)', increment_index, expr)
             
             # Handle vectorized expressions with [i,index]
             def increment_i_index(match):
-                index = int(match.group(1))
-                return f"(i,{index + 1}"
+                array_name = match.group(1)
+                index = int(match.group(2))
+                if array_name in ['EG', 'C', 'Y', 'wdot']:
+                    return f"{array_name}(i,{index + 1}"
+                return match.group(0)
 
-            expr = re.sub(r'\(i,(\d+)', increment_i_index, expr)
+            expr = re.sub(r'(\w+)\(i,(\d+)', increment_i_index, expr)
 
             # Handle vectorized expressions with [:, index]
             def increment_colon_index(match):
-                index = int(match.group(1))
-                return f"(:,{index + 1}"
+                array_name = match.group(1)
+                index = int(match.group(2))
+                if array_name in ['EG', 'C', 'Y', 'wdot']:
+                    return f"{array_name}(:,{index + 1}"
+                return match.group(0)
 
-            expr = re.sub(r'\(:,(\d+)', increment_colon_index, expr)
+            expr = re.sub(r'(\w+)\(:,(\d+)', increment_colon_index, expr)
             
             return expr
 
@@ -736,6 +748,7 @@ class chemistry_expressions:
         f.write("\n")
         f.write(f"    pfac = Patm/(R0*T)\n")
         
+        
 
     def write_fortran_header(self, f):
         if self.vec:
@@ -759,9 +772,11 @@ class chemistry_expressions:
             f.write("    implicit none\n")
             f.write("    real(kind=8), intent(in) :: T, P\n")
             f.write(f"    real(kind=8), dimension({self.chem.n_species_red}), intent(in) :: Y\n")
+            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
             f.write(f"    real(kind=8), dimension({self.chem.n_species_red}), intent(out) :: wdot\n")
             f.write(f"    real(kind=8), dimension({self.chem.n_species_red}) :: C\n")
             f.write(f"    real(kind=8), dimension({self.chem.n_species_sk}) :: EG\n")
+            
             f.write("    real(kind=8) :: kf, kb\n")
             f.write("    real(kind=8) :: rr, ctot, pfac\n")
             f.write("    real(kind=8) :: M, smh\n")
@@ -769,13 +784,14 @@ class chemistry_expressions:
             f.write("    real(kind=8) :: k0, kinf, Pr, Fcent\n")
             f.write("    real(kind=8) :: C1, N, F1, F\n")
             f.write("    real(kind=8) :: logPr, logFcent\n")
-        f.write(f"    real(kind=8), parameter :: Rc = {self.Rc}\n")
-        f.write(f"    real(kind=8), parameter :: R0 = {self.R0}\n")
-        f.write(f"    real(kind=8), parameter :: Patm = {self.Patm}\n")
+        f.write(f"    real(kind=8), parameter :: Rc = {self.Rc}D0\n")
+        f.write(f"    real(kind=8), parameter :: R0 = {self.R0}D0\n")
+        f.write(f"    real(kind=8), parameter :: Patm = {self.Patm}D0\n")
         f.write("    real(kind=8) :: kfl, kfh, kbl, logPl, logPh\n")
         f.write("    integer :: i\n")
         f.write("\n")
         f.write("    pfac = Patm / (R0 * T)\n")
+        f.write("    wdot = 0.0d0\n")
 
 
 
