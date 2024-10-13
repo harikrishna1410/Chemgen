@@ -8,8 +8,12 @@ __pycache__/
 
 #output files
 *.f90
+getrates.py
+getrates_i.py
+*.f
 *.h
 tests/*.f90
+tests/*.f
 tests/*.h
 
 # Distribution / packaging
