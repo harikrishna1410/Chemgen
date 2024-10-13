@@ -9,8 +9,8 @@ T = 1200  # K
 P = ct.one_atm  # 1 atm
 
 # Create gas object
-gas = ct.Solution('CH4_NUI_sk50.yaml')
-# gas = ct.Solution('H2_burke.yaml')
+# gas = ct.Solution('CH4_NUI_sk50.yaml')
+gas = ct.Solution('H2_burke.yaml')
 
 # Set the gas state
 gas.set_equivalence_ratio(phi, 'H2', 'O2:1.0, N2:3.76')
@@ -46,11 +46,22 @@ wdot_ftn = np.zeros_like(Y)
 wdot_python = np.zeros_like(Y)
 ickwrk = np.zeros((10,))
 rckwrk = np.zeros((10,))
-wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
-getrates_python(T, Y, P_cgs , wdot_python)
+# wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
+# wdot_ftn = getrates_ftn(1, T, Y, P_cgs)
+veclen = 1
+wdot_ftn = np.zeros((veclen,gas.n_species))
+T_array = np.zeros((veclen,))
+T_array[:] = T
+P_array = np.zeros((veclen,))
+P_array[:] = P_cgs
+Y_array = np.zeros_like(wdot_ftn)
+Y_array[0,:] = Y[:]
+wdot_ftn = getrates_ftn(T_array, Y_array, P_array,veclen)
+print(wdot_ftn.shape)
+# getrates_python(T, Y, P_cgs , wdot_python)
 
 # print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
-custom_wdot.append(wdot_ftn)
+custom_wdot.append(wdot_ftn[0])
 custom_wdot.append(wdot_python)
 
 # P_cgs = P * 10  # Convert from Pa to dyne/cm^2

@@ -762,7 +762,7 @@ class chemistry_expressions:
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
             f.write("    real(kind=8), dimension(veclen) :: kf, kb\n")
             f.write("    real(kind=8), dimension(veclen) :: rr, ctot, pfac\n")
-            f.write("    real(kind=8), dimension(veclen) :: M, smh\n")
+            f.write("    real(kind=8), dimension(veclen) :: M\n")
             # Add intermediate variables for troe and plog reactions
             f.write("    real(kind=8), dimension(veclen) :: k0, kinf, Pr, Fcent\n")
             f.write("    real(kind=8), dimension(veclen) :: C1, N, F1, F\n")
