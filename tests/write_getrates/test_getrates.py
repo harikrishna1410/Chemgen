@@ -56,9 +56,9 @@ P_array = np.zeros((veclen,))
 P_array[:] = P_cgs
 Y_array = np.zeros_like(wdot_ftn)
 Y_array[0,:] = Y[:]
-wdot_ftn = getrates_ftn(T_array, Y_array, P_array,veclen)
+# wdot_ftn = getrates_ftn(T_array, Y_array, P_array,veclen)
 print(wdot_ftn.shape)
-# getrates_python(T, Y, P_cgs , wdot_python)
+getrates_python(T, Y, P_cgs , wdot_python)
 
 # print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
 custom_wdot.append(wdot_ftn[0])
@@ -122,5 +122,5 @@ def compare_wdot(cantera_wdot, custom_wdot, tolerance=1e-6):
 # Run comparison
 print("ftn error")
 compare_wdot(cantera_wdot, custom_wdot[0])
-# print("python error")
-# compare_wdot(cantera_wdot, custom_wdot[1])
+print("python error")
+compare_wdot(cantera_wdot, custom_wdot[1])

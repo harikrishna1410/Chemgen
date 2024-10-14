@@ -261,7 +261,7 @@ class chemistry_expressions:
                     + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
                     + f" * np.exp({-Ea:.15e} / (Rc * T))"
             expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
-            expr["rr"] = f"(ctot " + ("+" if len(reaction["third_body"]) > 0 else "") \
+            expr["rr"] = f"(ctot " \
                         + " ".join([("+" if eff > 0.0 else "-")+f"{abs(eff):.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
                          + f")*(kf * ({reactants_expr}) - kb * ({products_expr}))"
         elif reaction["type"] == "troe":
