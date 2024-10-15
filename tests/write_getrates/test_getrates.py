@@ -3,6 +3,7 @@ import cantera as ct
 from getrates import getrates as getrates_python
 from getrates_i import getrates as getrates_python_vec
 from getrates_ftn_module import getrates as getrates_ftn
+from getrates_ftn_module_vec import getrates as getrates_ftn_vec
 
 # Set up initial conditions
 phi = 1.0
@@ -51,6 +52,7 @@ rckwrk = np.zeros((10,))
 # wdot_ftn = getrates_ftn(1, T, Y, P_cgs)
 veclen = 1
 wdot_python_vec = np.zeros((veclen,gas.n_species))
+wdot_ftn_vec = np.zeros((veclen,gas.n_species))
 T_array = np.zeros((veclen,))
 T_array[:] = T
 P_array = np.zeros((veclen,))
@@ -58,13 +60,15 @@ P_array[:] = P_cgs
 Y_array = np.zeros_like(wdot_python_vec)
 for i in range(veclen):
     Y_array[i,:] = Y[:]
-# getrates_python(T, Y, P_cgs , wdot_python)
-# getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
+getrates_python(T, Y, P_cgs , wdot_python)
+getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
 wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
+wdot_ftn_vec = getrates_ftn_vec(T_array, Y_array, P_array,veclen)
 
 custom_wdot.append(wdot_python)
 custom_wdot.append(wdot_python_vec[0])
 custom_wdot.append(wdot_ftn)
+custom_wdot.append(wdot_ftn_vec[0])
 
 
 # Compare species production rates

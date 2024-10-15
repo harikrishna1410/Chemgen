@@ -1,0 +1,29 @@
+{# Exponential G calculations #}
+{% for sp_name, thermo in species_dict.items() %}
+{% set low = thermo.data[0] %}
+{% set high = thermo.data[1] %}
+{% set temp_range = thermo["temperature-ranges"] %}
+! {{ sp_name }}
+do i = 1, veclen
+    if (T(i) .lt. {{ temp_range[1] }}) then
+        smh = &
+        {{ "%.15e"|format(low[6]-low[0])|replace("e","D") }} &
+        {{ '+' if low[0] >= 0 else '-' }} {{ "%.15e"|format(abs(low[0]))|replace("e","D") }} * log(T(i)) &
+        {{ '+' if low[1] >= 0 else '-' }} {{ "%.15e"|format(abs(low[1]/2.0))|replace("e","D") }} * T(i) &
+        {{ '+' if low[2] >= 0 else '-' }} {{ "%.15e"|format(abs(low[2]/6.0))|replace("e","D") }} * T(i)**2 &
+        {{ '+' if low[3] >= 0 else '-' }} {{ "%.15e"|format(abs(low[3]/12.0))|replace("e","D") }} * T(i)**3 &
+        {{ '+' if low[4] >= 0 else '-' }} {{ "%.15e"|format(abs(low[4]/20.0))|replace("e","D") }} * T(i)**4 &
+        {{ '-' if low[5] >= 0 else '+' }} {{ "%.15e"|format(abs(low[5]))|replace("e","D") }} / T(i)
+    else
+        smh = &
+        {{ "%.15e"|format(high[6]-high[0])|replace("e","D") }} &
+        {{ '+' if high[0] >= 0 else '-' }} {{ "%.15e"|format(abs(high[0]))|replace("e","D") }} * log(T(i)) &
+        {{ '+' if high[1] >= 0 else '-' }} {{ "%.15e"|format(abs(high[1]/2.0))|replace("e","D") }} * T(i) &
+        {{ '+' if high[2] >= 0 else '-' }} {{ "%.15e"|format(abs(high[2]/6.0))|replace("e","D") }} * T(i)**2 &
+        {{ '+' if high[3] >= 0 else '-' }} {{ "%.15e"|format(abs(high[3]/12.0))|replace("e","D") }} * T(i)**3 &
+        {{ '+' if high[4] >= 0 else '-' }} {{ "%.15e"|format(abs(high[4]/20.0))|replace("e","D") }} * T(i)**4 &
+        {{ '-' if high[5] >= 0 else '+' }} {{ "%.15e"|format(abs(high[5]))|replace("e","D") }} / T(i)
+    end if
+    EG(i,{{ loop.index0 + 1 }}) = exp(smh)
+end do
+{% endfor %}

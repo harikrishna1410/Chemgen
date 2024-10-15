@@ -208,7 +208,10 @@ class chemistry_expressions:
             else:
                 template = env.get_template("exp_g.j2")
         elif self.language == "fortran":
-            template = env.get_template("exp_g_ftn.j2")
+            if self.vec:
+                template = env.get_template("exp_g_ftn_vec.j2")
+            else:
+                template = env.get_template("exp_g_ftn.j2")
         else:
             raise ValueError("unknown language")
         
@@ -227,7 +230,10 @@ class chemistry_expressions:
             else:
                 template = env.get_template("ytoc.j2")
         elif self.language == "fortran":
-            template = env.get_template("ytoc_ftn.j2")
+            if self.vec:
+                template = env.get_template("ytoc_ftn_vec.j2")
+            else:
+                template = env.get_template("ytoc_ftn.j2")
         else:
             raise ValueError("unknown language")
         
@@ -263,7 +269,10 @@ class chemistry_expressions:
             else:
                 base_dir = "reactions"
         elif self.language == "fortran":
-            base_dir = "reactions_ftn"
+            if self.vec:
+                base_dir = "reactions_ftn_vec"
+            else:
+                base_dir = "reactions_ftn"
         else:
             raise ValueError("unknown language")
         
@@ -398,6 +407,7 @@ class chemistry_expressions:
             f.write("    real(kind=8), dimension(veclen) :: k0, kinf, Pr, Fcent\n")
             f.write("    real(kind=8), dimension(veclen) :: C1, N, F1, F\n")
             f.write("    real(kind=8), dimension(veclen) :: logPr, logFcent\n")
+            f.write("    real(kind=8) :: smh\n")
         else:
             f.write("subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)\n")
             f.write("    implicit none\n")

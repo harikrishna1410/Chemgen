@@ -16,8 +16,8 @@ therm_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/H2_burke/th
 ckp = ckparser()
 chem = chemistry(ck_file,ckp,therm_file=therm_file)
 
-for vec,ext_vec in zip([False],[""]):
-    for lang,ext in zip(["fortran"],["f90"]):
+for vec,ext_vec in zip([False,True],["","_i"]):
+    for lang,ext in zip(["fortran","python"],["f90","py"]):
         chem_expr =chemistry_expressions(chem,vec=vec,language=lang)
         filename = os.path.join(os.path.dirname(abs_path),f"getrates{ext_vec}.{ext}")
         chem_expr.write_expressions_to_file(filename)

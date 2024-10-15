@@ -1,0 +1,63 @@
+{# template for plog reactions. the reaction should have pressure_points and correspondig list of tuples of A,beta and Ea #}
+
+do i = 1, veclen
+    {# compute low and high points #}
+    {% for p in pressure_points%}
+    {% if loop.first%}
+    if (P(i) .lt. {{ "%.15e"|format(p)|replace("e","D") }}) then
+        kfl = &
+        {% for A,beta,Ea in plog[p]%}
+            +({{ "%.15e"|format(A)|replace("e","D") }} * (T(i)**({{ beta|e }})) * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T(i)))) {% if plog[p]|length>0 and not loop.last%}&{%endif%}
+        {% endfor %}
+        kfh = kfl
+        logPl = 1.0D0
+        logPh = {{ "%.15e"|format(log(p))|replace("e","D") }}
+    {% else %}
+    else if (P(i) .lt. {{ "%.15e"|format(p)|replace("e","D") }}) then
+        kfl = &
+        {% for A,beta,Ea in plog[loop.previtem]%}
+            +({{ "%.15e"|format(A)|replace("e","D") }} * (T(i)**({{ beta|e }})) * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T(i)))){% if plog[p]|length>0 and not loop.last%}&{%endif%}
+        {% endfor %}
+        kfh = &
+        {% for A,beta,Ea in plog[p]%}
+            +({{ "%.15e"|format(A)|replace("e","D") }} * (T(i)**({{ beta|e }})) * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T(i)))){% if plog[p]|length>0 and not loop.last%}&{%endif%}
+        {% endfor %}
+        logPl = {{ "%.15e"|format(log(loop.previtem))|replace("e","D") }}
+        logPh = {{ "%.15e"|format(log(p))|replace("e","D") }}
+    {% endif %}
+    {%endfor%}
+    else
+        kfl = &
+        {% for A,beta,Ea in plog[pressure_points[-1]]%}
+            +({{ "%.15e"|format(A)|replace("e","D") }} * (T(i)**({{ beta|e }})) * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T(i)))){% if plog[pressure_points[-1]]|length>0 and not loop.last%}&{%endif%}
+        {% endfor %}
+        kfh = kfl
+        logPl = {{ "%.15e"|format(log(pressure_points[-1]))|replace("e","D") }}
+        logPh = 100.0D0
+    end if
+
+    {# compute forward reaction rate constant from low and high#}
+    kf(i) = exp(log(kfl) + (log(kfh)-log(kfl))*(log(P(i))-logPl)/(logPh-logPl))
+end do
+
+{% if reaction['reversible'] %}
+{% if coeff_sum == 0 %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(:,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(:,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %}
+{% else %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(:,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(:,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac**({{ coeff_sum }}) 
+{% endif %}
+{% endif %}
+{% else %}
+kb = 0.0D0
+{% endif %}
+
+{# Calculate reaction rate #}
+rr = kf {% for sp, coeff in reaction["reacts"].items() %}* C(:,{{stoi_rd[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %} - kb {% for sp, coeff in reaction["prods"].items() %}* C(:,{{stoi_rd[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %}
+
+{% for sp, coef in reaction["reacts"].items()%}
+wdot(:,{{stoi_rd[sp]+1}}) = wdot(:,{{stoi_rd[sp]+1}}) - rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}
+
+{% for sp, coef in reaction["prods"].items()%}
+wdot(:,{{stoi_rd[sp]+1}}) = wdot(:,{{stoi_rd[sp]+1}}) + rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}
