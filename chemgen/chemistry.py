@@ -5,6 +5,8 @@ import sympy as sp
 import math
 import numpy as np
 import re
+import os
+from jinja2 import Environment,FileSystemLoader
 
 """
     Class to hold the info on the whole chemistry and perform manupulations on it
@@ -77,6 +79,15 @@ class chemistry:
     @property
     def qssa_species(self):
         return self.__qssa_species
+
+    @property
+    def stoi(self):
+        return self.__stoi
+
+    
+    @property
+    def stoi_red(self):
+        return self.__stoi_red
 
     def is_qssa(self, reaction_number):
         if self.__qssa_species is None:
@@ -181,7 +192,7 @@ class chemistry_expressions:
         self.R0 = 8.314510e+07
         self.Patm = 1013250.0
         if self.vec:
-            self.vectorize_expressions()
+            raise ValueError("vec not implemented yet")
 
     def create_expressions(self):
         for reaction_number, reaction in self.chem.reactions.items():
@@ -190,414 +201,71 @@ class chemistry_expressions:
         self.create_exp_g_expr()
 
     def create_exp_g_expr(self):
-        for sp_name in self.chem.species:
-            thermo = self.chem.species_dict[sp_name].input_data["thermo"]
-            
-            low = thermo["data"][0]
-            high = thermo["data"][1]
-            if(thermo["model"] != "NASA7"):
-                raise ValueError("thermo model != NASA7")
-            temp_range = thermo["temperature-ranges"]
-
-            self.exp_g_expr[sp_name] = [f"if T < {temp_range[1]}:"]
-            # s-h expression from chemkin low polynomial
-            smh_low = [
-                f"    {low[6]-low[0]:.15e}\\",
-                f"    {'+' if low[0] >= 0 else '-'} {abs(low[0]):.15e} * np.log(T)\\",
-                f"    {'+' if low[1] >= 0 else '-'} {abs(low[1]/2.0):.15e} * T\\",
-                f"    {'+' if low[2] >= 0 else '-'} {abs(low[2]/6.0):.15e} * T**2\\",
-                f"    {'+' if low[3] >= 0 else '-'} {abs(low[3]/12.0):.15e} * T**3\\",
-                f"    {'+' if low[4] >= 0 else '-'} {abs(low[4]/20.0):.15e} * T**4\\",
-                f"    {'-' if low[5] >= 0 else '+'} {abs(low[5]):.15e} / T"
-            ]
-            self.exp_g_expr[sp_name].append(f"    smh = \\")
-            self.exp_g_expr[sp_name].extend(smh_low)
-            self.exp_g_expr[sp_name].append("else:")
-            smh_high = [
-                f"    {high[6]-high[0]:.15e}\\",
-                f"    {'+' if high[0] >= 0 else '-'} {abs(high[0]):.15e} * np.log(T)\\",
-                f"    {'+' if high[1] >= 0 else '-'} {abs(high[1]/2.0):.15e} * T\\",
-                f"    {'+' if high[2] >= 0 else '-'} {abs(high[2]/6.0):.15e} * T**2\\",
-                f"    {'+' if high[3] >= 0 else '-'} {abs(high[3]/12.0):.15e} * T**3\\",
-                f"    {'+' if high[4] >= 0 else '-'} {abs(high[4]/20.0):.15e} * T**4\\",
-                f"    {'-' if high[5] >= 0 else '+'} {abs(high[5]):.15e} / T"
-            ]
-            self.exp_g_expr[sp_name].append(f"    smh = \\")
-            self.exp_g_expr[sp_name].extend(smh_high)
-            
-            self.exp_g_expr[sp_name].append(f"EG[{self.chem.species_index(sp_name)}] = np.exp(smh)")
-
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        env.globals["abs"] = abs
+        template = env.get_template("exp_g.j2")
+        
+        context = {
+            "species_dict": {sp_name:self.chem.species_dict[sp_name].input_data["thermo"] for sp_name in self.chem.species}
+        }
+        rendered_string = template.render(context)
+        self.exp_g_expr = '\n'.join('    ' + line for line in rendered_string.split('\n') if line.strip())
 
     def create_ytoc_expr(self):
-        self.ytoc_expr = []
-        for sp in self.chem.reduced_species:
-            reduced_index = self.chem.reduced_species_index(sp)
-            molecular_weight = self.chem.species_dict[sp].molecular_weight
-            self.ytoc_expr.append(
-                f"C[{reduced_index}] = Y[{reduced_index}] / "
-                f"{molecular_weight:.15e}"
-            )
-        self.ytoc_expr.append(f"ctot = 0.0")
-        self.ytoc_expr.append(f"for i in range({self.chem.n_species_red}):")
-        self.ytoc_expr.append("    ctot = ctot + C[i]")
-        self.ytoc_expr.append(f"for i in range({self.chem.n_species_red}):")
-        self.ytoc_expr.append(f"    C[i] = C[i]*P/(R0*ctot*T)")
-        if(self.chem.get_num_reactions_by_type("third_body")>0 
-            or self.chem.get_num_reactions_by_type("troe")>0):
-            self.ytoc_expr.append(f"ctot = 0.0")
-            self.ytoc_expr.append(f"for i in range({self.chem.n_species_red}):")
-            self.ytoc_expr.append(f"    ctot = ctot + C[i]")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        template = env.get_template("ytoc.j2")
+        
+        context = {
+            "chem": {
+                "nspecies": self.chem.n_species_red,
+                "mw": [self.chem.species_dict[sp].molecular_weight for sp in self.chem.reduced_species],
+                "has_third_body_reactions": any(r["type"] == "third_body" for r in self.chem.reactions.values()),
+                "has_troe_reactions": any(r["type"] == "troe" for r in self.chem.reactions.values())
+            }
+        }
+        rendered_string = template.render(context)
+        self.ytoc_expr = '\n'.join('    ' + line for line in rendered_string.split('\n') if line.strip())
 
     def create_reaction_expression(self, reaction_number, reaction):
-        reactants_expr = self.create_species_expression(reaction['reacts'])
-        products_expr = self.create_species_expression(reaction['prods'])
-        eqk = self.create_equilibrium_expression(reaction["reacts"], reaction["prods"])
-        
-        expr = {}
-        
-        if reaction["type"] == "third_body":
-            A, beta, Ea = reaction['arh']
-            expr["kf"] = f"{A:.15e}" \
-                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
-                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
-            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
-            expr["rr"] = f"(ctot " \
-                        + " ".join([("+" if eff > 0.0 else "-")+f"{abs(eff):.15e}*C[{self.chem.reduced_species_index(sp)}]\\\n    " for sp,eff in reaction["third_body"].items()])\
-                         + f")*(kf * ({reactants_expr}) - kb * ({products_expr}))"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        env.globals["abs"] = abs
+        env.globals["log"] = np.log
+
+        # Calculate coeff_sum correctly
+        coeff_sum = sum(reaction["prods"].values()) - sum(reaction["reacts"].values())
+        context = {
+                "reaction": reaction,
+                "stoi": self.chem.stoi,
+                "stoi_rd": self.chem.stoi_red,
+                "coeff_sum": coeff_sum
+        }
+
+        if reaction["type"] == "standard":
+            template = env.get_template("reactions/standard.j2")
+        elif reaction["type"] == "third_body":
+            template = env.get_template("reactions/third_body.j2")
         elif reaction["type"] == "troe":
-            A, beta, Ea = reaction['arh']
-            A0, beta0, Ea0 = reaction['troe']['low']
-            troe_params = reaction['troe']['troe']
-            a, T3, T1 = troe_params[:3]
-            T2 = troe_params[3] if len(troe_params) > 3 else 0.0
-            expr["M"] = "ctot"
-            if reaction["third_body"]:
-                expr["M"] += " ".join([("+" if eff > 0.0 else "-")+ f"{abs(eff):.15e}*C[{self.chem.reduced_species_index(sp)}]" for sp, eff in reaction["third_body"].items()])
-            expr["k0"] = f"{A0:.15e}" \
-                        + (f" * (T ** ({beta0}))" if abs(beta0) > 0.0 else "") \
-                        + f" * np.exp({-Ea0:.15e} / (Rc * T))"
-            expr["kinf"] = f"{A:.15e}" \
-                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
-                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
-            expr["Pr"] = f"(k0 * M) / kinf"
-            expr["Fcent"] = (f"(1-{abs(a):.15e})" if a > 0.0 else f"(1+{abs(a):.15e})" ) \
-                            +f" * np.exp(-T/({T3:.15e})) + ({a:.15e}) * np.exp(-T/({T1:.15e}))"
-            if T2 > 0:
-                expr["Fcent"] += f" + np.exp({-T2:.15e}/T)"
-            expr["C1"] = f"-0.4e0 - 0.67e0 * np.log10(Fcent)"
-            expr["N"] = f"0.75e0 - 1.27e0 * np.log10(Fcent)"
-            expr["F1"] = f"(np.log10(Pr) + C1) / (N - 0.14e0 * (np.log10(Pr) + C1))"
-            expr["F"] = f"10 ** (np.log10(Fcent) / (1 + F1**2))"
-            expr["kf"] = f"kinf * (Pr / (1 + Pr)) * F"
-            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
-            expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
-        elif reaction["type"] == "standard":    
-            A, beta, Ea = reaction['arh']
-            expr["kf"] = f"{A:.15e}" \
-                    + (f" * (T ** ({beta}))" if abs(beta) > 0.0 else "") \
-                    + f" * np.exp({-Ea:.15e} / (Rc * T))"
-            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0"
-            expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
+            template = env.get_template("reactions/troe.j2")
         elif reaction["type"] == "plog":
-            # First pass to identify and sum duplicate pressure points
-            pressure_points = {}
-            for c in reaction['plog']:
-                if c[0] not in pressure_points:
-                    pressure_points[c[0]] = []
-                pressure_points[c[0]].append(c)
-
-            # Build kf strings for each unique pressure point
-            kf_strings = {}
-            for pressure, conditions in pressure_points.items():
-                kf_sum = " + ".join([f"{c[1]:.15e}" + (f" * (T ** ({c[2]}))" if abs(c[2]) > 0.0 else "") + f" * np.exp({-c[3]:.15e} / (Rc * T))" for c in conditions])
-                kf_strings[pressure] = kf_sum
-
-            # Sort pressure points
-            sorted_pressures = sorted(pressure_points.keys())
-
-            # Build expressions using the summed kf strings
-            expr = {}
-            for i, p in enumerate(sorted_pressures):
-                if i == 0:
-                    expr[f"if P < {p:.15e}:"] = [f"if P < {p:.15e}:"]
-                    expr[f"if P < {p:.15e}:"].append(f"    kfl={kf_strings[p]}")
-                    expr[f"if P < {p:.15e}:"].append(f"    kfh={kf_strings[p]}")
-                    expr[f"if P < {p:.15e}:"].append(f"    logPl=1.0e0")
-                    expr[f"if P < {p:.15e}:"].append(f"    logPh={np.log(p):.15e}")
-                elif i < len(sorted_pressures) - 1:
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"] = [f"elif P < {sorted_pressures[i+1]:.15e}:"]
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfl={kf_strings[p]}")
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    kfh={kf_strings[sorted_pressures[i+1]]}")
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPl={np.log(p):.15e}")
-                    expr[f"elif P < {sorted_pressures[i+1]:.15e}:"].append(f"    logPh={np.log(sorted_pressures[i+1]):.15e}")
-
-            expr["else:"] = ["else:"]
-            last_p = sorted_pressures[-1]
-            expr["else:"].append(f"    kfl={kf_strings[last_p]}")
-            expr["else:"].append(f"    kfh={kf_strings[last_p]}")
-            expr["else:"].append(f"    logPl={np.log(last_p):.15e}")
-            expr["else:"].append(f"    logPh=100.0e0")
-
-            expr["kf"] = "np.exp(np.log(kfl) + (np.log(kfh)-np.log(kfl))*(np.log(P)-logPl)/(logPh-logPl))"
-            expr["kb"] = f"kf * ({eqk})" if reaction['reversible'] else "0.0"
-            expr["rr"] = f"kf * ({reactants_expr}) - kb * ({products_expr})"
+            if("HCN" in reaction["reacts"].keys() or "HCN" in reaction["prods"].keys()):
+                print(reaction["eqn"])
+                print([c[0] for c in reaction["plog"]])
+            pressure_points = set()
+            for c in reaction["plog"]:
+                pressure_points.add(c[0])
+            plog = {p:[] for p in list(pressure_points)}
+            for c in reaction["plog"]:
+                plog[c[0]].append(c[1:])
+            context["plog"] = plog
+            context["pressure_points"] = sorted(list(pressure_points))
+            template = env.get_template("reactions/plog.j2")
         
-        expr["wdot"] = self.get_species_production_rate(reaction_number, reaction)
+        rendered_string = template.render(context)
+        expr = '\n'.join('    ' + line.rstrip() for line in rendered_string.split('\n') if line.strip())
         return expr
-
-    def create_species_expression(self, species_dict):
-        return " * ".join([f"C[{self.chem.reduced_species_index(species)}]" + (f"**{coeff}" if coeff > 1.0 else "")
-                           for species, coeff in species_dict.items()])
-    
-    def create_equilibrium_expression(self, reactants_dict, products_dict):
-        reactants = " * ".join([f"EG[{self.chem.species_index(species)}]" + (f"**({coeff})" if coeff > 1.0 else "")
-                                for species, coeff in reactants_dict.items()])
-        products = " * ".join([f"EG[{self.chem.species_index(species)}]" + (f"**{coeff}" if coeff > 1.0 else "")
-                               for species, coeff in products_dict.items()])
-        if(abs(sum(products_dict.values())-sum(reactants_dict.values())) > 0):
-            if(sum(products_dict.values())-sum(reactants_dict.values()) == 1):
-                pfac = f"* pfac"
-            else:
-                pfac = f"* pfac**({sum(products_dict.values())-sum(reactants_dict.values()):0.1f})"
-        else:
-            pfac = ""
-        return f"(({reactants})/({products}{pfac}))"
-
-    def get_reaction_expression(self, reaction_number):
-        return self.reaction_expressions[reaction_number]
-        
-    def get_species_production_rate(self, reaction_number, reaction):
-        wdot_expressions = []
-        for species_name, coeff in reaction["reacts"].items():
-            species_idx = self.chem.reduced_species_index(species_name)
-            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"- {coeff:.2e} * rr" if coeff > 1.0 else "- rr")
-            wdot_expressions.append(wdot_expr)
-        
-        for species_name, coeff in reaction["prods"].items():
-            species_idx = self.chem.reduced_species_index(species_name)
-            wdot_expr = f"wdot[{species_idx}] = wdot[{species_idx}] " + (f"+ {coeff:.2e} * rr" if coeff > 1.0 else "+ rr")
-            wdot_expressions.append(wdot_expr)
-        
-        return wdot_expressions
-
-    def vectorize_expressions(self):
-        vector_vars = ['T', 'C', 'EG', 'kf', 'kb', 'rr', 'wdot', 'Y', "ctot", "P"]
-
-        # Vectorize reaction expressions
-        for reaction_number, reaction_expr in self.reaction_expressions.items():
-            vectorized_expr = {}
-            
-            if self.chem.reactions[reaction_number]['type'] == 'plog':
-                vectorized_expr = self.vectorize_plog_reaction(reaction_expr, vector_vars)
-            else:
-                for key, expr in reaction_expr.items():
-                    if key == "wdot":
-                        vectorized = [self.vectorize_wdot_expr(expr) for expr in expr]
-                    else:
-                        vectorized = expr
-                        for var in vector_vars:
-                            vec_var = f"{var}"
-                            vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
-                    
-                    vectorized_expr[key] = vectorized
-            
-            self.reaction_expressions[reaction_number] = vectorized_expr
-
-        # Vectorize ytoc expressions
-        vectorized_ytoc = []
-        for expr in self.ytoc_expr:
-            vectorized = expr
-            for var in vector_vars:
-                vec_var = f"{var}"
-                vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
-            vectorized_ytoc.append(vectorized)
-        self.ytoc_expr = vectorized_ytoc
-
-        # Vectorize exp_g expressions
-        for sp_name in self.chem.species:
-            vectorized_exp_g = ["for i in range(veclen):"]
-            for expr in self.exp_g_expr[sp_name]:
-                indented_expr = "    " + expr
-                indented_expr = indented_expr.replace("T", "T[i]")
-                indented_expr = re.sub(r'EG\[(\d+)\]', r'EG[i,\1]', indented_expr)
-                vectorized_exp_g.append(indented_expr)
-            self.exp_g_expr[sp_name] = vectorized_exp_g
-
-    def vectorize_plog_reaction(self, reaction_expr, vector_vars):
-        vectorized_expr = {}
-        
-        for key, expr in reaction_expr.items():
-            if key.startswith("if"):
-                vectorized = ["for i in range(veclen):"]
-            else:
-                vectorized = []
-            if key.startswith("if") or key.startswith("elif") or key == "else:":
-                for line in expr:
-                    vectorized_line = "    " + line
-                    for var in ["T"]:
-                        vectorized_line = vectorized_line.replace(f"{var}", f"{var}[i]")
-                    vectorized.append(vectorized_line)
-                vectorized[0] = vectorized[0].replace("P","P[i]")
-                vectorized[1] = vectorized[1].replace("P","P[i]")
-                vectorized_expr[key] = vectorized
-            elif key == "kf":
-                vectorized_line = expr
-                vectorized_line = vectorized_line.replace("logPl","logkl")\
-                               .replace("logPh","logkh")\
-                               .replace("kfl","bfl")\
-                               .replace("kfh","bfh")
-                for var in vector_vars:
-                    vectorized_line = vectorized_line.replace(f"{var}", f"{var}[i]")
-                vectorized_line = vectorized_line.replace("logkl","logPl")\
-                               .replace("logkh","logPh")\
-                               .replace("bfl","kfl")\
-                               .replace("bfh","kfh")
-                vectorized_expr[key] = vectorized_line
-            elif key == "wdot":
-                vectorized = [self.vectorize_wdot_expr(expr) for expr in expr]
-                vectorized_expr[key] = vectorized
-            else:
-                vectorized = expr
-                for var in vector_vars:
-                    vec_var = f"{var}"
-                    vectorized = vectorized.replace(f"{var}[", f"{vec_var}[:,")
-                vectorized_expr[key] = vectorized
-        
-        return vectorized_expr
-
-    def vectorize_wdot_expr(self, expr):
-        return expr.replace("wdot[", "wdot[:,").replace("rr", "rr[:]")
-
-    def format_expression(self, expr):
-        if self.language == 'python':
-            return expr
-        elif self.language == 'fortran':
-            return self.convert_to_fortran(expr)
-
-    def convert_to_fortran(self, expr):
-        if isinstance(expr, list):  # This is a block structure (if, else, elif, or for)
-            first_line = expr[0].strip()
-            indent = " " * (len(expr[0]) - len(expr[0].strip()))
-            if first_line.startswith("for "):
-                loop_parts = first_line.split()
-                loop_var = loop_parts[1]
-                range_parts = loop_parts[3].strip("range(").split(",")
-                range_parts[-1] = range_parts[-1].strip("):")
-                if len(range_parts) == 1:
-                    start = "1"
-                    end = range_parts[0]
-                elif len(range_parts) == 2:
-                    start, end = range_parts
-                else:
-                    start, end, step = range_parts
-                    # Note: Fortran's step is handled differently, may need adjustment
-                
-                fortran_block = [f"{indent}do {loop_var} = {start}, {end}"]
-            elif first_line.startswith("if "):
-                condition = first_line[3:-1]  # Remove 'if ' and ':'
-                fortran_block = [f"{indent}if ({self.convert_to_fortran(condition)}) then"]
-            elif first_line.startswith("elif "):
-                condition = first_line[5:-1]  # Remove 'elif ' and ':'
-                fortran_block = [f"{indent}else if ({self.convert_to_fortran(condition)}) then"]
-            elif first_line == "else:":
-                fortran_block = [f"{indent}else"]
-            else:
-                raise ValueError(f"Unexpected block start: {first_line}")
-            i = 1            
-            while i < len(expr):
-                line = expr[i]
-                if (line.strip().startswith("if ") or 
-                    line.strip().startswith("elif ") or 
-                    line.strip().startswith("else:") or 
-                    line.strip().startswith("for ")):
-                    # Start of a nested block
-                    print(line)
-                    nested_block = [line]
-                    i += 1
-                    current_indent = len(line) - len(line.lstrip())
-                    while i < len(expr) and len(expr[i]) - len(expr[i].lstrip()) > current_indent:
-                        print(expr[i])
-                        nested_block.append(expr[i])
-                        i += 1
-                    converted_nested_block = self.convert_to_fortran(nested_block)
-                    for c in converted_nested_block:
-                        print(c)
-                    fortran_block.extend([l for l in converted_nested_block])
-                else:
-                    fortran_block.append(self.convert_to_fortran(line))
-                    i += 1
-            
-            if first_line.startswith("for "):
-                fortran_block.append(f"{indent}end do")
-            elif first_line == "else:":
-                fortran_block.append(f"{indent}end if")
-            
-            return fortran_block
-        else:  # This is a single expression
-            # Convert Python-style expressions to Fortran
-            expr = expr.replace("**", "**")
-            expr = expr.replace("[", "(").replace("]", ")")
-            expr = expr.replace("np.exp", "exp")
-            expr = re.sub(r'(\d+)\.(\d*(?:[eE][-+]?\d+)?)', lambda m: f'{m.group(1)}.{m.group(2).replace("e", "D")}', expr)
-            expr = expr.replace("\\", "&")
-            expr = expr.replace("np.log", "log")
-            expr = expr.replace("np.log10", "log10")
-            # Handle if, elif, else, and for statements
-            if expr.strip().startswith("if "):
-                condition = expr.strip()[3:-1]  # Remove 'if ' and ':'
-                expr = f"if ({self.convert_to_fortran(condition)}) then"
-            elif expr.strip().startswith("elif "):
-                condition = expr.strip()[5:-1]  # Remove 'elif ' and ':'
-                expr = f"else if ({self.convert_to_fortran(condition)}) then"
-            elif expr.strip() == "else:":
-                expr = "else"
-            elif expr.strip().startswith("for "):
-                loop_parts = expr.strip().split()
-                loop_var = loop_parts[1]
-                range_parts = loop_parts[3].strip("range(").split(",")
-                range_parts[-1] = range_parts[-1].strip("):")
-                if len(range_parts) == 1:
-                    start = "1"
-                    end = range_parts[0]
-                elif len(range_parts) == 2:
-                    start, end = range_parts
-                else:
-                    start, end, step = range_parts
-                expr = f"do {loop_var} = {start}, {end}"
-
-            # Increase all indices between parentheses by 1 using regex
-            # The code appears to be correct, but there are a few potential improvements:
-
-            def increment_index(match):
-                array_name = match.group(1)
-                index = int(match.group(2))
-                if array_name in ['EG', 'C', 'Y', 'wdot']:
-                    return f"{array_name}({index + 1}"
-                return match.group(0)
-
-            expr = re.sub(r'(\w+)\((\d+)', increment_index, expr)
-            
-            # Handle vectorized expressions with [i,index]
-            def increment_i_index(match):
-                array_name = match.group(1)
-                index = int(match.group(2))
-                if array_name in ['EG', 'C', 'Y', 'wdot']:
-                    return f"{array_name}(i,{index + 1}"
-                return match.group(0)
-
-            expr = re.sub(r'(\w+)\(i,(\d+)', increment_i_index, expr)
-
-            # Handle vectorized expressions with [:, index]
-            def increment_colon_index(match):
-                array_name = match.group(1)
-                index = int(match.group(2))
-                if array_name in ['EG', 'C', 'Y', 'wdot']:
-                    return f"{array_name}(:,{index + 1}"
-                return match.group(0)
-
-            expr = re.sub(r'(\w+)\(:,(\d+)', increment_colon_index, expr)
-            
-            return expr
 
     def write_expressions_to_file(self, filename):
         with open(filename, 'w') as f:
@@ -609,59 +277,17 @@ class chemistry_expressions:
             # Write ytoc expressions
             f.write("    # Y to C conversion\n" if self.language == 'python' else "    ! Y to C conversion\n")
             i = 0
-            while i < len(self.ytoc_expr):
-                expr = self.ytoc_expr[i]
-                if expr.startswith("for "):
-                    # Found a loop, collect all expressions until the indentation changes
-                    loop_exprs = [expr]
-                    i += 1
-                    while i < len(self.ytoc_expr) and self.ytoc_expr[i].startswith("    "):
-                        loop_exprs.append(self.ytoc_expr[i])
-                        i += 1
-                    formatted_loop = self.format_expression(loop_exprs)
-                    for line in formatted_loop:
-                        f.write(f"    {line}\n")
-                else:
-                    f.write(f"    {self.format_expression(expr)}\n")
-                    i += 1
+            f.write(self.ytoc_expr)
             f.write("\n")
             
             # Write exp_g expressions
             f.write("    # Exponential G calculations\n" if self.language == 'python' else "    ! Exponential G calculations\n")
-            for species, exp_g_expr in self.exp_g_expr.items():
-                f.write(f"    # {species}\n" if self.language == 'python' else f"    ! {species}\n")
-                i = 0
-                while i < len(exp_g_expr):
-                    expr = exp_g_expr[i]
-                    if expr.startswith("for ") or \
-                        expr.startswith("if ") or \
-                        expr.startswith("else") or \
-                        expr.startswith("elif"):
-                        # Found a loop or conditional, collect all expressions until the indentation changes
-                        block_exprs = [expr]
-                        i += 1
-                        while i < len(exp_g_expr) and exp_g_expr[i].startswith("    "):
-                            block_exprs.append(exp_g_expr[i])
-                            i += 1
-                        formatted_block = self.format_expression(block_exprs)
-                        for line in formatted_block:
-                            f.write(f"    {line}\n")
-                    else:
-                        f.write(f"    {self.format_expression(expr)}\n")
-                        i += 1
-                f.write("\n")
+            f.write(self.exp_g_expr)
+            f.write("\n")
             
             for reaction_number, reaction_expr in self.reaction_expressions.items():
                 f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
-                
-                if self.chem.reactions[reaction_number]['type'] == 'plog':
-                    self.write_plog_reaction(f, reaction_expr)
-                else:
-                    for expr_type in reaction_expr.keys():
-                        if expr_type != "wdot":
-                            f.write(f"    {expr_type} = {self.format_expression(reaction_expr[expr_type])}\n")
-                for wdot_expr in reaction_expr['wdot']:
-                    f.write(f"    {self.format_expression(wdot_expr)}\n")
+                f.write(self.reaction_expressions[reaction_number])
                 f.write("\n")
 
             if self.language == 'python':
@@ -671,25 +297,6 @@ class chemistry_expressions:
 
         print(f"Expressions and getrates function written to {filename}")
 
-    def write_plog_reaction(self, f, reaction_expr):
-        for key, expr_list in reaction_expr.items():
-            if key.startswith("if") or key.startswith("elif") or key == "else:":
-                if key.startswith("if") and self.vec:
-                    expr_list[0] = self.format_expression(expr_list[0])
-                    formatted_block = self.format_expression(expr_list[1:])
-                    formatted_block = [expr_list[0]] + formatted_block
-                else:
-                    formatted_block = self.format_expression(expr_list)
-                for line in formatted_block:
-                    f.write(f"    {line}\n")
-            elif key != "wdot":
-                if(self.vec and key == "kf"):
-                    vec_key = self.format_expression("    "+key+"[i]")
-                    f.write(f"    {vec_key} = {self.format_expression(expr_list)}\n")
-                    if(self.language == "fortran"):
-                        f.write("    end do\n")
-                else:
-                    f.write(f"    {key} = {self.format_expression(expr_list)}\n")
 
     def write_python_header(self, f):
         f.write("import numpy as np\n\n")

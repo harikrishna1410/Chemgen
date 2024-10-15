@@ -1,7 +1,7 @@
 import numpy as np
 import cantera as ct
 from getrates import getrates as getrates_python
-from getrates_ftn_module import getrates as getrates_ftn
+# from getrates_ftn_module import getrates as getrates_ftn
 
 # Set up initial conditions
 phi = 1.0
@@ -9,8 +9,8 @@ T = 1200  # K
 P = ct.one_atm  # 1 atm
 
 # Create gas object
-# gas = ct.Solution('CH4_NUI_sk50.yaml')
-gas = ct.Solution('H2_burke.yaml')
+gas = ct.Solution('CH4_NUI_sk50.yaml')
+# gas = ct.Solution('H2_burke.yaml')
 
 # Set the gas state
 gas.set_equivalence_ratio(phi, 'H2', 'O2:1.0, N2:3.76')
@@ -57,7 +57,7 @@ P_array[:] = P_cgs
 Y_array = np.zeros_like(wdot_ftn)
 Y_array[0,:] = Y[:]
 # wdot_ftn = getrates_ftn(T_array, Y_array, P_array,veclen)
-print(wdot_ftn.shape)
+print(wdot_python.shape)
 getrates_python(T, Y, P_cgs , wdot_python)
 
 # print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))

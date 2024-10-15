@@ -1,0 +1,56 @@
+{# This is the template for Troe reaction type #}
+
+{% set A, beta, Ea = reaction["arh"] %}
+{% set A0, beta0, Ea0 = reaction["troe"]["low"] %}
+{% set troe_params = reaction["troe"]["troe"] %}
+{% set a, T3, T1 = troe_params[:3] %}
+{% set T2 = troe_params[3] if troe_params|length == 4 else None %}
+
+{# Calculate M (third body concentration) #}
+M = ctot {% if reaction["third_body"]|length > 0 %} \{% endif %}
+{% for sp, eff in reaction.get("third_body", {}).items() %}
+    {% if eff > 0.0 %}
+    + {{ "%.15e" % abs(eff) }}*C[{{ stoi_rd[sp] }}] {% if not loop.last %}\{%endif%}
+    {% else %}
+    - {{ "%.15e" % abs(eff) }}*C[{{ stoi_rd[sp] }}] {% if not loop.last %}\{%endif%}
+    {% endif %}
+{% endfor %}
+
+{# Calculate k0 (low-pressure limit rate constant) #}
+k0 = {{ "%.15e" % A0 }} {% if beta0 != 0.0 %}* (T**({{ beta0|e }})) {% endif %} * np.exp({{ "%.15e" % (-1.0 * Ea0) }}/(Rc*T))
+
+{# Calculate kinf (high-pressure limit rate constant) #}
+kinf = {{ "%.15e" % A }} {% if beta != 0.0 %}* (T**({{ beta|e }})) {% endif %} * np.exp({{ "%.15e" % (-1.0 * Ea) }}/(Rc*T))
+
+{# Calculate Pr (reduced pressure) #}
+Pr = (k0 * M) / kinf
+
+{# Calculate Fcent (center broadening factor) #}
+Fcent = {{ "%.15e" % (1.0 - a) }} * np.exp(-T/{{ "%.15e" % T3 }}) + \
+        {{ "%.15e" % a }} * np.exp(-T/{{ "%.15e" % T1 }}) {% if T2 %}+ np.exp({{ "%.15e" % (-T2) }}/T){% endif %}
+
+{# Calculate F (broadening factor) #}
+C1 = -0.4 - 0.67 * np.log10(Fcent)
+N1 = 0.75 - 1.27 * np.log10(Fcent)
+f1 = (np.log10(Pr) + C1) / (N1 - 0.14 * (np.log10(Pr) + C1))
+F = 10.0 ** (np.log10(Fcent) / (1.0 + f1**2))
+
+{# Calculate kf (forward rate constant) #}
+kf = kinf * (Pr / (1.0 + Pr)) * F
+
+{% if reaction['reversible'] %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG[{{stoi[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG[{{stoi[sp]}}]{% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac**({{ coeff_sum }}) {% endif %}
+{% else %}
+kb = 0.0
+{% endif %}
+
+{# Calculate reaction rate #}
+rr = kf {% for sp, coeff in reaction["reacts"].items() %}* C[{{stoi[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %} - kb {% for sp, coeff in reaction["prods"].items() %}* C[{{stoi[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %}
+
+{% for sp, coef in reaction["reacts"].items() %}
+wdot[{{stoi[sp]}}] = wdot[{{stoi[sp]}}] - rr {% if coef != 1.0 %} * {{coef}} {% endif %}
+{% endfor %}
+
+{% for sp, coef in reaction["prods"].items() %}
+wdot[{{stoi[sp]}}] = wdot[{{stoi[sp]}}] + rr {% if coef != 1.0 %} * {{coef}} {% endif %}
+{% endfor %}
