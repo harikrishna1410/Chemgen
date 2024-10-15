@@ -1,0 +1,17 @@
+{# this is the template for y to c calculations #}
+
+{% for sp_idx in range(chem["nspecies"]) %}
+C[:,{{sp_idx}}] = Y[:,{{sp_idx}}] / {{"%.15e" % chem["mw"][sp_idx]}}
+{% endfor %}
+
+ctot[:] = 0.0
+for i in range({{chem["nspecies"]}}):
+    ctot[:] = ctot[:] + C[:,i]
+for i in range({{chem["nspecies"]}}):
+    C[:,i] = C[:,i] * P / (R0 * ctot * T)
+
+{% if chem["has_third_body_reactions"] or chem["has_troe_reactions"] %}
+ctot[:] = 0.0
+for i in range({{chem["nspecies"]}}):
+    ctot = ctot + C[:,i]
+{% endif %}

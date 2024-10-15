@@ -1,6 +1,7 @@
 import numpy as np
 import cantera as ct
 from getrates import getrates as getrates_python
+from getrates_i import getrates as getrates_python_vec
 # from getrates_ftn_module import getrates as getrates_ftn
 
 # Set up initial conditions
@@ -49,52 +50,21 @@ rckwrk = np.zeros((10,))
 # wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
 # wdot_ftn = getrates_ftn(1, T, Y, P_cgs)
 veclen = 1
-wdot_ftn = np.zeros((veclen,gas.n_species))
+wdot_python_vec = np.zeros((veclen,gas.n_species))
 T_array = np.zeros((veclen,))
 T_array[:] = T
 P_array = np.zeros((veclen,))
 P_array[:] = P_cgs
-Y_array = np.zeros_like(wdot_ftn)
-Y_array[0,:] = Y[:]
-# wdot_ftn = getrates_ftn(T_array, Y_array, P_array,veclen)
-print(wdot_python.shape)
+Y_array = np.zeros_like(wdot_python_vec)
+for i in range(veclen):
+    Y_array[i,:] = Y[:]
 getrates_python(T, Y, P_cgs , wdot_python)
+getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
 
 # print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
-custom_wdot.append(wdot_ftn[0])
 custom_wdot.append(wdot_python)
+custom_wdot.append(wdot_python_vec[0])
 
-# P_cgs = P * 10  # Convert from Pa to dyne/cm^2
-# veclen = 10
-# wdot = np.zeros((veclen,gas.n_species))
-# kf, kb, rr = getrates(veclen,np.array([T]*veclen), np.stack([Y]*veclen,axis=0), np.array([P_cgs]*veclen), wdot)
-
-# print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
-# custom_wdot.append(wdot[0].ravel())
-
-# cantera_wdot.append(gas.net_production_rates)
-# # Run simulation
-# for t in times:
-#     for reaction_index in zero_reactions:
-#         gas.set_multiplier(0.0, reaction_index - 1)  # Cantera uses 0-indexed reactions
-#     sim.advance(t)
-#     # Get state
-#     Y = r.thermo.Y
-#     T = r.T
-#     P = r.thermo.P
-    
-#     # Get Cantera species production rates
-#     cantera_wdot.append(gas.net_production_rates)
-    
-#     # Get custom species production rates
-#     wdot = np.zeros_like(Y)
-#     P_cgs = P * 10  # Convert from Pa to dyne/cm^2
-#     kf, kb, rr = getrates(T, Y, P_cgs, wdot)
-#     custom_wdot.append(wdot)
-
-# Convert to numpy arrays
-cantera_wdot = np.array(cantera_wdot)
-custom_wdot = np.array(custom_wdot)
 
 # Compare species production rates
 def compare_wdot(cantera_wdot, custom_wdot, tolerance=1e-6):
@@ -109,18 +79,17 @@ def compare_wdot(cantera_wdot, custom_wdot, tolerance=1e-6):
     else:
         print("Test failed: Custom wdot differs from Cantera wdot beyond tolerance.")
         
-    # Print detailed comparison for the last time step
-    print("\nDetailed comparison for the last time step:")
-    species_names = gas.species_names
-    for i, (cw, custw) in enumerate(zip(cantera_wdot[0], custom_wdot)):
-        print(f"Species {species_names[i]}:")
-        print(f"  Cantera wdot: {cw:.4e}")
-        print(f"  Custom wdot:  {custw:.4e}")
-        print(f"  Relative diff: {rel_diff[-1, i]:.4e}")
-        print()
+    # # Print detailed comparison for the last time step
+    # print("\nDetailed comparison for the last time step:")
+    # species_names = gas.species_names
+    # for i, (cw, custw) in enumerate(zip(cantera_wdot[0], custom_wdot)):
+    #     print(f"Species {species_names[i]}:")
+    #     print(f"  Cantera wdot: {cw:.4e}")
+    #     print(f"  Custom wdot:  {custw:.4e}")
+    #     print(f"  Relative diff: {rel_diff[-1, i]:.4e}")
+    #     print()
 
 # Run comparison
-print("ftn error")
-compare_wdot(cantera_wdot, custom_wdot[0])
-print("python error")
-compare_wdot(cantera_wdot, custom_wdot[1])
+for i in range(len(custom_wdot)):
+    print(f"index {i}")
+    compare_wdot(cantera_wdot[0], custom_wdot[i])

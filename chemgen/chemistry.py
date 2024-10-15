@@ -186,13 +186,11 @@ class chemistry_expressions:
         if self.language not in ['python', 'fortran']:
             raise ValueError("Language must be either 'python' or 'fortran'")
 
-        self.create_expressions()
         self.vec = vec
+        self.create_expressions()
         self.Rc = 1.9872155832  # cal/(mol·K)
         self.R0 = 8.314510e+07
         self.Patm = 1013250.0
-        if self.vec:
-            raise ValueError("vec not implemented yet")
 
     def create_expressions(self):
         for reaction_number, reaction in self.chem.reactions.items():
@@ -204,7 +202,10 @@ class chemistry_expressions:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
         env.globals["abs"] = abs
-        template = env.get_template("exp_g.j2")
+        if self.vec:
+            template = env.get_template("exp_g_vec.j2")
+        else:
+            template = env.get_template("exp_g.j2")
         
         context = {
             "species_dict": {sp_name:self.chem.species_dict[sp_name].input_data["thermo"] for sp_name in self.chem.species}
@@ -215,7 +216,10 @@ class chemistry_expressions:
     def create_ytoc_expr(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
-        template = env.get_template("ytoc.j2")
+        if self.vec:
+            template = env.get_template("ytoc_vec.j2")
+        else:
+            template = env.get_template("ytoc.j2")
         
         context = {
             "chem": {
@@ -243,12 +247,16 @@ class chemistry_expressions:
                 "coeff_sum": coeff_sum
         }
 
+        if(self.vec):
+            base_dir = "reactions_vectorised"
+        else:
+            base_dir = "reactions"
         if reaction["type"] == "standard":
-            template = env.get_template("reactions/standard.j2")
+            template = env.get_template(f"{base_dir}/standard.j2")
         elif reaction["type"] == "third_body":
-            template = env.get_template("reactions/third_body.j2")
+            template = env.get_template(f"{base_dir}/third_body.j2")
         elif reaction["type"] == "troe":
-            template = env.get_template("reactions/troe.j2")
+            template = env.get_template(f"{base_dir}/troe.j2")
         elif reaction["type"] == "plog":
             if("HCN" in reaction["reacts"].keys() or "HCN" in reaction["prods"].keys()):
                 print(reaction["eqn"])
@@ -261,7 +269,7 @@ class chemistry_expressions:
                 plog[c[0]].append(c[1:])
             context["plog"] = plog
             context["pressure_points"] = sorted(list(pressure_points))
-            template = env.get_template("reactions/plog.j2")
+            template = env.get_template(f"{base_dir}/plog.j2")
         
         rendered_string = template.render(context)
         expr = '\n'.join('    ' + line.rstrip() for line in rendered_string.split('\n') if line.strip())

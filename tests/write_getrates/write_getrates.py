@@ -16,7 +16,7 @@ therm_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/methane_NUI
 ckp = ckparser()
 chem = chemistry(ck_file,ckp,therm_file=therm_file)
 
-for vec,ext_vec in zip([False],[""]):
+for vec,ext_vec in zip([False,True],["","_i"]):
     for lang,ext in zip(["python"],["py"]):
         chem_expr =chemistry_expressions(chem,vec=vec,language=lang)
         filename = os.path.join(os.path.dirname(abs_path),f"getrates{ext_vec}.{ext}")

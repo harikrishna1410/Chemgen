@@ -1,0 +1,36 @@
+{# This is the template for third body reaction type #}
+
+{% set A, beta, Ea = reaction["arh"] %}
+{# forward rate constant #}
+kf = {{ "%.15e" % A }} {% if beta != 0.0 %} * (T**({{ beta|e }})) {% endif %} * np.exp({{ "%.15e" % (-1.0 * Ea) }}/(Rc*T))
+
+{% if reaction['reversible'] %}
+{% if coeff_sum == 0 %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG[:,{{stoi[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG[:,{{stoi[sp]}}]{% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %}
+{% else %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG[:,{{stoi[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG[:,{{stoi[sp]}}]{% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac**({{ coeff_sum }}) 
+{% endif %}
+{% endif %}
+{% else %}
+kb = 0.0
+{% endif %}
+
+M = ctot{% if reaction["third_body"]|length > 0 %} \{% endif %} 
+{% for sp, eff in reaction["third_body"].items() %}
+    {% if eff > 0.0 %}
+    + {{ "%.15e" % abs(eff) }}*C[:,{{ stoi_rd[sp] }}] {%if not loop.last %}\{%endif%}
+    {% else %}
+    - {{ "%.15e" % abs(eff) }}*C[:,{{ stoi_rd[sp] }}] {%if not loop.last %}\{%endif%}
+    {% endif %}
+{% endfor %}
+
+{# Calculate reaction rate #}
+rr = M * (kf {% for sp, coeff in reaction["reacts"].items() %}* C[:,{{stoi_rd[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %} - kb {% for sp, coeff in reaction["prods"].items() %}* C[:,{{stoi_rd[sp]}}]{% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %})
+
+{% for sp, coef in reaction["reacts"].items()%}
+wdot[:,{{stoi_rd[sp]}}] = wdot[:,{{stoi_rd[sp]}}] - rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}
+
+{% for sp, coef in reaction["prods"].items()%}
+wdot[:,{{stoi_rd[sp]}}] = wdot[:,{{stoi_rd[sp]}}] + rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}
