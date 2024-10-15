@@ -1,0 +1,27 @@
+{# This is the template for standard reaction type #}
+
+{% set A, beta, Ea = reaction["arh"] %}
+{# forward rate constant #}
+    kf = {{ "%.15e"|format(A)|replace("e","D") }} {% if beta != 0.0 %} * (T(i)**({{ beta|e }})) {% endif %} * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T(i)))
+
+{% if reaction['reversible'] %}
+{% if coeff_sum == 0 %}
+    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %}
+{% else %}
+    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac(i)**({{ coeff_sum }}) 
+{% endif %}
+{% endif %}
+{% else %}
+    kb = 0.0D0
+{% endif %}
+
+{# Calculate reaction rate #}
+    rr = kf {% for sp, coeff in reaction["reacts"].items() %}* C(i,{{stoi_rd[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %} - kb {% for sp, coeff in reaction["prods"].items() %}* C(i,{{stoi_rd[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %} {% endfor %}
+
+{% for sp, coef in reaction["reacts"].items()%}
+    wdot(i,{{stoi_rd[sp]+1}}) = wdot(i,{{stoi_rd[sp]+1}}) - rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}
+
+{% for sp, coef in reaction["prods"].items()%}
+    wdot(i,{{stoi_rd[sp]+1}}) = wdot(i,{{stoi_rd[sp]+1}}) + rr {% if coef != 1.0%} * {{coef}} {% endif %}
+{% endfor %}

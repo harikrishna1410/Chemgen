@@ -177,7 +177,7 @@ class chemistry:
         return dummy_reaction_number
 
 class chemistry_expressions:
-    def __init__(self, chem, vec=False, language='python'):
+    def __init__(self, chem, vec=False, omp = False, language='python'):
         self.chem = chem        
         self.reaction_expressions = {}
         self.ytoc_expr = []
@@ -187,6 +187,12 @@ class chemistry_expressions:
             raise ValueError("Language must be either 'python' or 'fortran'")
 
         self.vec = vec
+        self.omp = omp
+        if(self.vec and self.omp):
+            raise ValueError("both vec and omp can't be true")
+        
+        if(self.omp and self.language == "python"):
+            raise ValueError("omp only works with fortran")
         self.create_expressions()
         self.Rc = 1.9872155832  # cal/(mol·K)
         self.R0 = 8.314510e+07
@@ -210,6 +216,8 @@ class chemistry_expressions:
         elif self.language == "fortran":
             if self.vec:
                 template = env.get_template("exp_g_ftn_vec.j2")
+            elif self.omp:
+                template = env.get_template("reactions_omp_gpu/exp_g.j2")
             else:
                 template = env.get_template("exp_g_ftn.j2")
         else:
@@ -219,7 +227,7 @@ class chemistry_expressions:
             "species_dict": {sp_name:self.chem.species_dict[sp_name].input_data["thermo"] for sp_name in self.chem.species}
         }
         rendered_string = template.render(context)
-        self.exp_g_expr = '\n'.join('    ' + line for line in rendered_string.split('\n') if line.strip())
+        self.exp_g_expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
 
     def create_ytoc_expr(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -232,6 +240,8 @@ class chemistry_expressions:
         elif self.language == "fortran":
             if self.vec:
                 template = env.get_template("ytoc_ftn_vec.j2")
+            elif self.omp:
+                template = env.get_template("reactions_omp_gpu/ytoc.j2")
             else:
                 template = env.get_template("ytoc_ftn.j2")
         else:
@@ -246,7 +256,7 @@ class chemistry_expressions:
             }
         }
         rendered_string = template.render(context)
-        self.ytoc_expr = '\n'.join('    ' + line for line in rendered_string.split('\n') if line.strip())
+        self.ytoc_expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
 
     def create_reaction_expression(self, reaction_number, reaction):
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -271,6 +281,8 @@ class chemistry_expressions:
         elif self.language == "fortran":
             if self.vec:
                 base_dir = "reactions_ftn_vec"
+            elif self.omp:
+                base_dir = "reactions_omp_gpu"
             else:
                 base_dir = "reactions_ftn"
         else:
@@ -297,10 +309,14 @@ class chemistry_expressions:
             template = env.get_template(f"{base_dir}/plog.j2")
         
         rendered_string = template.render(context)
-        expr = '\n'.join('    ' + line.rstrip() for line in rendered_string.split('\n') if line.strip())
+        expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
         return expr
 
     def write_expressions_to_file(self, filename):
+        omp_startdo = "!$omp target teams distribute parallel do"
+        omp_enddo = "!$omp end target teams distribute parallel do"
+        startdo ="    do i = 1,veclen"
+        enddo = "    enddo"
         with open(filename, 'w') as f:
             if self.language == 'python':
                 self.write_python_header(f)
@@ -318,10 +334,24 @@ class chemistry_expressions:
             f.write(self.exp_g_expr)
             f.write("\n")
             
+            rnum = 0
             for reaction_number, reaction_expr in self.reaction_expressions.items():
+                if(self.omp):
+                    if(rnum == 0):
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
+                    elif(rnum%10 == 0):
+                        f.write(enddo+"\n")
+                        f.write(omp_enddo+"\n")
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
                 f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
                 f.write(self.reaction_expressions[reaction_number])
                 f.write("\n")
+                rnum += 1
+            if(self.omp):
+                f.write(enddo+"\n")
+                f.write(omp_enddo+"\n")
 
             if self.language == 'python':
                 f.write("    return kf, kb, rr\n")
@@ -407,6 +437,23 @@ class chemistry_expressions:
             f.write("    real(kind=8), dimension(veclen) :: k0, kinf, Pr, Fcent\n")
             f.write("    real(kind=8), dimension(veclen) :: C1, N, F1, F\n")
             f.write("    real(kind=8), dimension(veclen) :: logPr, logFcent\n")
+            f.write("    real(kind=8) :: smh\n")
+        elif self.omp:
+            f.write("subroutine getrates(veclen, T, Y, P, wdot)\n")
+            f.write("    implicit none\n")
+            f.write("    integer, intent(in) :: veclen\n")
+            f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
+            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(in) :: Y\n")
+            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(out) :: wdot\n")
+            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}) :: C\n")
+            f.write(f"    real(kind=8), dimension(veclen) :: ctot,pfac\n")
+            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
+            f.write("    real(kind=8) :: kf, kb\n")
+            f.write("    real(kind=8) :: rr\n")
+            f.write("    real(kind=8 :: M\n")
+            f.write("    real(kind=8) :: k0, kinf, Pr, Fcent\n")
+            f.write("    real(kind=8) :: C1, N, F1, F\n")
+            f.write("    real(kind=8) :: logPr, logFcent\n")
             f.write("    real(kind=8) :: smh\n")
         else:
             f.write("subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)\n")

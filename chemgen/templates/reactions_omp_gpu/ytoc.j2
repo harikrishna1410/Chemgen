@@ -1,0 +1,33 @@
+{# this is the template for y to c calculations #}
+
+C(:,:) = 0.0d0
+EG(:,:) = 0.0d0
+!!!this is to not get C back again after the first C computation
+!!!also assumes that Y,T,P,Wdot are already offloaded to gpu
+
+!!!!both of these will be closed at the end of this kernel
+!$omp target enter data map(to:C,ctot,EG)
+!$omp target data use_device_ptr(Y,T,P,wdot,C,ctot,EG)
+
+!$omp target teams distribute parallel do 
+do i = 1, veclen
+{% for sp_idx in range(chem["nspecies"]) %}
+    C(i,{{sp_idx+1}}) = Y(i,{{sp_idx+1}}) / {{"%.15e"|format(chem["mw"][sp_idx])|replace("e","D")}}
+{% endfor %}
+
+    ctot(i) = 0.0D0
+    do L = 1, {{chem["nspecies"]}}
+        ctot(i) = ctot(i) + C(i,L)
+    end do
+    do L = 1, {{chem["nspecies"]}}
+        C(i,L) = C(i,L) * P(i) / (R0 * ctot(i) * T(i))
+    end do
+
+{% if chem["has_third_body_reactions"] or chem["has_troe_reactions"] %}
+    ctot(i) = 0.0D0
+    do L = 1, {{chem["nspecies"]}}
+        ctot(i) = ctot(i) + C(i,L)
+    end do
+{% endif %}
+enddo
+!$omp end target teams distribute parallel do
