@@ -202,10 +202,15 @@ class chemistry_expressions:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
         env.globals["abs"] = abs
-        if self.vec:
-            template = env.get_template("exp_g_vec.j2")
+        if self.language == "python":
+            if self.vec:
+                template = env.get_template("exp_g_vec.j2")
+            else:
+                template = env.get_template("exp_g.j2")
+        elif self.language == "fortran":
+            template = env.get_template("exp_g_ftn.j2")
         else:
-            template = env.get_template("exp_g.j2")
+            raise ValueError("unknown language")
         
         context = {
             "species_dict": {sp_name:self.chem.species_dict[sp_name].input_data["thermo"] for sp_name in self.chem.species}
@@ -216,10 +221,15 @@ class chemistry_expressions:
     def create_ytoc_expr(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
-        if self.vec:
-            template = env.get_template("ytoc_vec.j2")
+        if self.language == "python":
+            if self.vec:
+                template = env.get_template("ytoc_vec.j2")
+            else:
+                template = env.get_template("ytoc.j2")
+        elif self.language == "fortran":
+            template = env.get_template("ytoc_ftn.j2")
         else:
-            template = env.get_template("ytoc.j2")
+            raise ValueError("unknown language")
         
         context = {
             "chem": {
@@ -247,10 +257,16 @@ class chemistry_expressions:
                 "coeff_sum": coeff_sum
         }
 
-        if(self.vec):
-            base_dir = "reactions_vectorised"
+        if self.language == "python":
+            if(self.vec):
+                base_dir = "reactions_vectorised"
+            else:
+                base_dir = "reactions"
+        elif self.language == "fortran":
+            base_dir = "reactions_ftn"
         else:
-            base_dir = "reactions"
+            raise ValueError("unknown language")
+        
         if reaction["type"] == "standard":
             template = env.get_template(f"{base_dir}/standard.j2")
         elif reaction["type"] == "third_body":

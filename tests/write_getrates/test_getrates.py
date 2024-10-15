@@ -2,7 +2,7 @@ import numpy as np
 import cantera as ct
 from getrates import getrates as getrates_python
 from getrates_i import getrates as getrates_python_vec
-# from getrates_ftn_module import getrates as getrates_ftn
+from getrates_ftn_module import getrates as getrates_ftn
 
 # Set up initial conditions
 phi = 1.0
@@ -10,8 +10,8 @@ T = 1200  # K
 P = ct.one_atm  # 1 atm
 
 # Create gas object
-gas = ct.Solution('CH4_NUI_sk50.yaml')
-# gas = ct.Solution('H2_burke.yaml')
+# gas = ct.Solution('CH4_NUI_sk50.yaml')
+gas = ct.Solution('H2_burke.yaml')
 
 # Set the gas state
 gas.set_equivalence_ratio(phi, 'H2', 'O2:1.0, N2:3.76')
@@ -47,7 +47,7 @@ wdot_ftn = np.zeros_like(Y)
 wdot_python = np.zeros_like(Y)
 ickwrk = np.zeros((10,))
 rckwrk = np.zeros((10,))
-# wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
+
 # wdot_ftn = getrates_ftn(1, T, Y, P_cgs)
 veclen = 1
 wdot_python_vec = np.zeros((veclen,gas.n_species))
@@ -58,12 +58,13 @@ P_array[:] = P_cgs
 Y_array = np.zeros_like(wdot_python_vec)
 for i in range(veclen):
     Y_array[i,:] = Y[:]
-getrates_python(T, Y, P_cgs , wdot_python)
-getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
+# getrates_python(T, Y, P_cgs , wdot_python)
+# getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
+wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
 
-# print("diff bn dims",np.amax(wdot[0]-wdot[-1]),np.amin(wdot[0]-wdot[-1]))
 custom_wdot.append(wdot_python)
 custom_wdot.append(wdot_python_vec[0])
+custom_wdot.append(wdot_ftn)
 
 
 # Compare species production rates

@@ -1,0 +1,35 @@
+{# This is the template for third body reaction type #}
+
+{% set A, beta, Ea = reaction["arh"] %}
+{# forward rate constant #}
+kf = {{ "%.15e"|format(A)|replace("e","D") }}{% if beta != 0.0 %} * (T**({{ beta|e }})){% endif %} * exp({{ "%.15e"|format(-1.0 * Ea)|replace("e","D") }}/(Rc*T))
+
+{% if reaction['reversible'] %}
+{% if coeff_sum == 0 %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG({{stoi[sp] + 1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG({{stoi[sp] + 1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %}{% endfor %}
+{% else %}
+kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG({{stoi[sp] + 1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG({{stoi[sp] + 1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %}{% endfor %}{% if coeff_sum != 0.0 %} / pfac**({{ coeff_sum }}){% endif %}
+{% endif %}
+{% else %}
+kb = 0.0d0
+{% endif %}
+
+M = ctot{% if reaction["third_body"]|length > 0 %} &{% endif %} 
+{% for sp, eff in reaction["third_body"].items() %}
+    {% if eff > 0.0 %}
+    + {{ "%.15e"|format(abs(eff))|replace("e","D") }}*C({{ stoi_rd[sp] + 1 }}){% if not loop.last %} &{% endif %}
+    {% else %}
+    - {{ "%.15e"|format(abs(eff))|replace("e","D") }}*C({{ stoi_rd[sp] + 1 }}){% if not loop.last %} &{% endif %}
+    {% endif %}
+{% endfor %}
+
+{# Calculate reaction rate #}
+rr = M * (kf{% for sp, coeff in reaction["reacts"].items() %} * C({{stoi_rd[sp] + 1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %} - kb{% for sp, coeff in reaction["prods"].items() %} * C({{stoi_rd[sp] + 1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %})
+
+{% for sp, coef in reaction["reacts"].items() %}
+wdot({{stoi_rd[sp] + 1}}) = wdot({{stoi_rd[sp] + 1}}) - rr{% if coef != 1.0 %} * {{coef}}{% endif %}
+{% endfor %}
+
+{% for sp, coef in reaction["prods"].items() %}
+wdot({{stoi_rd[sp] + 1}}) = wdot({{stoi_rd[sp] + 1}}) + rr{% if coef != 1.0 %} * {{coef}}{% endif %}
+{% endfor %}
