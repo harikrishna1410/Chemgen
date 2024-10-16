@@ -7,7 +7,7 @@
 {% set T2 = troe_params[3] if troe_params|length == 4 else None %}
 
 {# Calculate M (third body concentration) #}
-    M = ctot {% if reaction["third_body"]|length > 0 %} &{% endif %}
+    M = ctot(i) {% if reaction["third_body"]|length > 0 %} &{% endif %}
 {% for sp, eff in reaction.get("third_body", {}).items() %}
     {% if eff > 0.0 %}
         + {{ "%.15e"|format(abs(eff))|replace("e","D") }}*C(i,{{ stoi_rd[sp]+1 }}) {% if not loop.last %}&{%endif%}

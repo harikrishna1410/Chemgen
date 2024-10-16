@@ -5,7 +5,7 @@
 {% set temp_range = thermo["temperature-ranges"] %}
 ! {{ sp_name }}
 !!!!I really don't need to wait for other species to finish
-!$omp target teams distribute parallel do nowait
+!$omp target teams distribute parallel do private(smh,i)
 do i = 1, veclen
     if (T(i) .lt. {{ temp_range[1] }}) then
         smh = &

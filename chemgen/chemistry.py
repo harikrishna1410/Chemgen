@@ -313,7 +313,8 @@ class chemistry_expressions:
         return expr
 
     def write_expressions_to_file(self, filename):
-        omp_startdo = "!$omp target teams distribute parallel do"
+        thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
+        omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
         omp_enddo = "!$omp end target teams distribute parallel do"
         startdo ="    do i = 1,veclen"
         enddo = "    enddo"
@@ -326,6 +327,12 @@ class chemistry_expressions:
             # Write ytoc expressions
             f.write("    # Y to C conversion\n" if self.language == 'python' else "    ! Y to C conversion\n")
             i = 0
+            if self.omp:
+                f.write("    C = 0.0d0\n")
+                f.write("    ctot = 0.0d0\n")
+                f.write("    EG = 0.0d0\n")
+                f.write("!$omp target enter data map(to:C,ctot,EG)\n")
+                f.write("!$omp target data use_device_ptr(Y,T,P,wdot,C,ctot,EG)\n")
             f.write(self.ytoc_expr)
             f.write("\n")
             
@@ -352,11 +359,16 @@ class chemistry_expressions:
             if(self.omp):
                 f.write(enddo+"\n")
                 f.write(omp_enddo+"\n")
+                f.write("!$omp end target data\n")
+                f.write("!$omp target exit data map(delete:C,ctot,EG)\n")
 
             if self.language == 'python':
                 f.write("    return kf, kb, rr\n")
             else:  # Fortran
-                f.write("end subroutine getrates\n")
+                if self.omp:
+                    f.write("end subroutine getrates_gpu\n")
+                else:
+                    f.write("end subroutine getrates\n")
 
         print(f"Expressions and getrates function written to {filename}")
 
@@ -439,7 +451,7 @@ class chemistry_expressions:
             f.write("    real(kind=8), dimension(veclen) :: logPr, logFcent\n")
             f.write("    real(kind=8) :: smh\n")
         elif self.omp:
-            f.write("subroutine getrates(veclen, T, Y, P, wdot)\n")
+            f.write("subroutine getrates_gpu(veclen, T, Y, P, wdot)\n")
             f.write("    implicit none\n")
             f.write("    integer, intent(in) :: veclen\n")
             f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
@@ -450,7 +462,7 @@ class chemistry_expressions:
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
             f.write("    real(kind=8) :: kf, kb\n")
             f.write("    real(kind=8) :: rr\n")
-            f.write("    real(kind=8 :: M\n")
+            f.write("    real(kind=8) :: M\n")
             f.write("    real(kind=8) :: k0, kinf, Pr, Fcent\n")
             f.write("    real(kind=8) :: C1, N, F1, F\n")
             f.write("    real(kind=8) :: logPr, logFcent\n")
@@ -476,7 +488,7 @@ class chemistry_expressions:
         f.write(f"    real(kind=8), parameter :: R0 = {self.R0}D0\n")
         f.write(f"    real(kind=8), parameter :: Patm = {self.Patm}D0\n")
         f.write("    real(kind=8) :: kfl, kfh, kbl, logPl, logPh\n")
-        f.write("    integer :: i\n")
+        f.write("    integer :: i,L\n")
         f.write("\n")
         f.write("    pfac = Patm / (R0 * T)\n")
         f.write("    wdot = 0.0d0\n")
