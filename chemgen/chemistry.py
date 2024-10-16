@@ -367,6 +367,8 @@ class chemistry_expressions:
             else:  # Fortran
                 if self.omp:
                     f.write("end subroutine getrates_gpu\n")
+                elif self.vec:
+                    f.write("end subroutine getrates_i\n")
                 else:
                     f.write("end subroutine getrates\n")
 
