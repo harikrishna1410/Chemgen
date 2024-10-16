@@ -434,11 +434,12 @@ class chemistry_expressions:
 
     def write_fortran_header(self, f):
         if self.vec:
-            f.write("subroutine getrates(veclen, T, Y, P, wdot)\n")
+            f.write("subroutine getrates_i(P, T, veclen, Y, ickwrk, rckwrk, wdot)\n")
             f.write("    implicit none\n")
             f.write("    integer, intent(in) :: veclen\n")
             f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(in) :: Y\n")
+            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(out) :: wdot\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}) :: C\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
@@ -451,11 +452,12 @@ class chemistry_expressions:
             f.write("    real(kind=8), dimension(veclen) :: logPr, logFcent\n")
             f.write("    real(kind=8) :: smh\n")
         elif self.omp:
-            f.write("subroutine getrates_gpu(veclen, T, Y, P, wdot)\n")
+            f.write("subroutine getrates_gpu(P, T, veclen, Y, ickwrk, rckwrk, wdot)\n")
             f.write("    implicit none\n")
             f.write("    integer, intent(in) :: veclen\n")
             f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(in) :: Y\n")
+            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(out) :: wdot\n")
             f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}) :: C\n")
             f.write(f"    real(kind=8), dimension(veclen) :: ctot,pfac\n")
