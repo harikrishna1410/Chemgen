@@ -83,11 +83,14 @@ class chemistry:
     @property
     def stoi(self):
         return self.__stoi
-
     
     @property
     def stoi_red(self):
         return self.__stoi_red
+    
+    @property
+    def reaction_types(self):
+        return self.__reaction_types
 
     def is_qssa(self, reaction_number):
         if self.__qssa_species is None:
@@ -309,7 +312,7 @@ class chemistry_expressions:
             template = env.get_template(f"{base_dir}/plog.j2")
         
         rendered_string = template.render(context)
-        expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
+        expr = '\n'.join('    ' + line.rstrip() if not line.strip().startswith('!$') else line.rstrip() for line in rendered_string.split('\n') if line.strip())
         return expr
 
     def write_expressions_to_file(self, filename):
@@ -342,20 +345,23 @@ class chemistry_expressions:
             f.write("\n")
             
             rnum = 0
-            for reaction_number, reaction_expr in self.reaction_expressions.items():
-                if(self.omp):
-                    if(rnum == 0):
-                        f.write(omp_startdo+"\n")
-                        f.write(startdo+"\n")
-                    elif(rnum%10 == 0):
-                        f.write(enddo+"\n")
-                        f.write(omp_enddo+"\n")
-                        f.write(omp_startdo+"\n")
-                        f.write(startdo+"\n")
-                f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
-                f.write(self.reaction_expressions[reaction_number])
-                f.write("\n")
-                rnum += 1
+            for rtype in self.chem.reaction_types:
+                f.write(f"    {'#' if self.language == 'python' else '!'} Reaction type: {rtype}\n")
+                for reaction_number, reaction_expr in self.reaction_expressions.items():
+                    if(self.omp):
+                        if(rnum == 0):
+                            f.write(omp_startdo+"\n")
+                            f.write(startdo+"\n")
+                        elif(rnum%30 == 0):
+                            f.write(enddo+"\n")
+                            f.write(omp_enddo+"\n")
+                            f.write(omp_startdo+"\n")
+                            f.write(startdo+"\n")
+                    if(self.chem.reactions[reaction_number]["type"] == rtype):
+                        f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                        f.write(self.reaction_expressions[reaction_number])
+                        f.write("\n")
+                        rnum += 1
             if(self.omp):
                 f.write(enddo+"\n")
                 f.write(omp_enddo+"\n")

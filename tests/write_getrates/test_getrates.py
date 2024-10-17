@@ -62,8 +62,8 @@ for i in range(veclen):
     Y_array[i,:] = Y[:]
 getrates_python(T, Y, P_cgs , wdot_python)
 getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
-wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
-wdot_ftn_vec = getrates_ftn_vec(T_array, Y_array, P_array,veclen)
+# wdot_ftn = getrates_ftn(P_cgs, T, Y , ickwrk, rckwrk)
+# wdot_ftn_vec = getrates_ftn_vec(T_array, Y_array, P_array,veclen)
 
 custom_wdot.append(wdot_python)
 custom_wdot.append(wdot_python_vec[0])

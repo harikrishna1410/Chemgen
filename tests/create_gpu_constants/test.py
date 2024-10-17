@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..')))
 
 from chemgen.parser import ckparser
 from chemgen.chemistry import chemistry
@@ -8,8 +8,10 @@ from chemgen.write_constants import *
 
 
 abs_path = os.path.abspath(__file__)
-ck_file = os.path.join(os.path.dirname(abs_path), "../ck_files/methane_NUI/chem.ske50_R1_R6_dup_fix.inp")
-therm_file = os.path.join(os.path.dirname(abs_path), "../ck_files/methane_NUI/therm.dat")
+ck_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/methane_NUI/chem.ske50_R1_R6_dup_fix.inp")
+therm_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/methane_NUI/therm.dat")
+# ck_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/H2_burke/chem_without_CO_CO2_AR_HE.inp")
+# therm_file = os.path.join(os.path.dirname(abs_path), "../../ck_files/H2_burke/therm.dat")
 
 ckp = ckparser()
 chem = chemistry(ck_file,ckp,therm_file=therm_file)
