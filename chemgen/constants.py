@@ -55,9 +55,177 @@ extern "C" {
 }
 """
 
+# Constant memory declarations
+CONSTANT_MEMORY_DECLARATIONS_ROCBLAS = """
+// Declare mechanism constants in global memory
+__device__ double* A_d;
+__device__ double* B_d;
+__device__ double* sk_coef_d;
+__device__ double* coef_r_d;
+__device__ double* coef_p_d;
+__device__ double* wdot_coef_d;
+
+//intermediate arrays
+__device__ double *rr_d;
+__device__ double *sigma_logC_r_d; 
+__device__ double *sigma_logC_p_d;
+__device__ double *logEQK_d;
+"""
+
+# Copy constants to device function
+COPY_CONSTANTS_TO_DEVICE_FUNC_ROCBLAS = """
+extern "C" {
+    hipError_t allocate_intermediate_DeviceMemory(int ng) {
+        hipError_t err;
+
+        err = hipMalloc((void**)&rr_d, ng * NREACT_MECH * sizeof(double));
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate device memory for rr_d: %s\\n", hipGetErrorString(err));
+            return err;
+        }
+
+        err = hipMalloc((void**)&sigma_logC_r_d, ng * NREACT_MECH * sizeof(double));
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate device memory for sigma_logC_r_d: %s\\n", hipGetErrorString(err));
+            hipFree(rr_d);
+            return err;
+        }
+
+        err = hipMalloc((void**)&sigma_logC_p_d, ng * NREACT_MECH * sizeof(double));
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate device memory for sigma_logC_p_d: %s\\n", hipGetErrorString(err));
+            hipFree(rr_d);
+            hipFree(sigma_logC_r_d);
+            return err;
+        }
+
+        err = hipMalloc((void**)&logEQK_d, ng * NREACT_MECH * sizeof(double));
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate device memory for logEQK_d: %s\\n", hipGetErrorString(err));
+            hipFree(rr_d);
+            hipFree(sigma_logC_r_d);
+            hipFree(sigma_logC_p_d);
+            return err;
+        }
+
+        return hipSuccess;
+    }
+}
+
+extern "C" {
+    void copyConstantsToDevice(const double* A_h,
+                           const double* B_h,
+                           const double* sk_coef_h,
+                           const double* coef_r_h,
+                           const double* coef_p_h,
+                           const double* wdot_coef_h)
+    {
+        hipError_t err;
+
+        err = hipMalloc((void**)&A_d, sizeof(double) * NREACT_MECH);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate A_d: %s\\n", hipGetErrorString(err));
+            return;
+        }
+
+        err = hipMalloc((void**)&B_d, sizeof(double) * NREACT_MECH * 2);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate B_d: %s\\n", hipGetErrorString(err));
+            hipFree(A_d);
+            return;
+        }
+
+        err = hipMalloc((void**)&sk_coef_d, sizeof(double) * NREACT_MECH * NSP_SK);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate sk_coef_d: %s\\n", hipGetErrorString(err));
+            hipFree(A_d);
+            hipFree(B_d);
+            return;
+        }
+
+        err = hipMalloc((void**)&coef_r_d, sizeof(double) * NREACT_MECH * NSP_RED);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate coef_r_d: %s\\n", hipGetErrorString(err));
+            hipFree(A_d);
+            hipFree(B_d);
+            hipFree(sk_coef_d);
+            return;
+        }
+
+        err = hipMalloc((void**)&coef_p_d, sizeof(double) * NREACT_MECH * NSP_RED);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate coef_p_d: %s\\n", hipGetErrorString(err));
+            hipFree(A_d);
+            hipFree(B_d);
+            hipFree(sk_coef_d);
+            hipFree(coef_r_d);
+            return;
+        }
+
+        err = hipMalloc((void**)&wdot_coef_d, sizeof(double) * NREACT_MECH * NSP_RED);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to allocate wdot_coef_d: %s\\n", hipGetErrorString(err));
+            hipFree(A_d);
+            hipFree(B_d);
+            hipFree(sk_coef_d);
+            hipFree(coef_r_d);
+            hipFree(coef_p_d);
+            return;
+        }
+
+        err = hipMemcpy(A_d, A_h, sizeof(double) * NREACT_MECH, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy A_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        err = hipMemcpy(B_d, B_h, sizeof(double) * NREACT_MECH * 2, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy B_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        err = hipMemcpy(sk_coef_d, sk_coef_h, sizeof(double) * NREACT_MECH * NSP_SK, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy sk_coef_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        err = hipMemcpy(coef_r_d, coef_r_h, sizeof(double) * NREACT_MECH * NSP_RED, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy coef_r_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        err = hipMemcpy(coef_p_d, coef_p_h, sizeof(double) * NREACT_MECH * NSP_RED, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy coef_p_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        err = hipMemcpy(wdot_coef_d, wdot_coef_h, sizeof(double) * NREACT_MECH * NSP_RED, hipMemcpyHostToDevice);
+        if (err != hipSuccess) {
+            fprintf(stderr, "Failed to copy wdot_coef_d: %s\\n", hipGetErrorString(err));
+            goto cleanup;
+        }
+
+        return;
+
+    cleanup:
+        hipFree(A_d);
+        hipFree(B_d);
+        hipFree(sk_coef_d);
+        hipFree(coef_r_d);
+        hipFree(coef_p_d);
+        hipFree(wdot_coef_d);
+    }
+}
+"""
+
 def get_header_content(chem: chemistry,
                        parallel_level=1,
-                       nreact_per_block=DEFAULT_NREACT_PER_BLOCK):
+                       nreact_per_block=DEFAULT_NREACT_PER_BLOCK,
+                       rocblas=False):
     max_specs = chem.find_max_specs(parallel_level>2)
     header_content = f"""#ifndef CONSTANTS_V{parallel_level}_H
 #define CONSTANTS_V{parallel_level}_H
@@ -102,9 +270,9 @@ const double RU = {RU}; //universal gas constant
 const double SMALL = {SMALL}; //a small value
 const double PATM = {PATM}; //atmospheric pressure
 ///****************mechanism constants************************
-{CONSTANT_MEMORY_DECLARATIONS}
+{CONSTANT_MEMORY_DECLARATIONS if not rocblas else CONSTANT_MEMORY_DECLARATIONS_ROCBLAS}
 
-{COPY_CONSTANTS_TO_DEVICE_FUNC}
+{COPY_CONSTANTS_TO_DEVICE_FUNC if not rocblas else COPY_CONSTANTS_TO_DEVICE_FUNC_ROCBLAS}
 #endif
 """
     return header_content

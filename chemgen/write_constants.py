@@ -131,20 +131,76 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
     
     return new_lines
 
+def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
+    
+    new_lines = []
+    r_dict = chem.reactions
+
+    ##pad the mechanism
+    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
+        reactions = chem.get_reactions_by_type(reaction_type)
+        if len(reactions)%nreact_per_block != 0:
+            for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
+                chem.add_dummy_reaction(reaction_type)
+
+    sk_coef = np.zeros((chem.n_species_sk*chem.get_num_reactions_by_type("standard"),))
+    coef_r = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
+    coef_p = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
+    wdot_coef = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
+    
+    for reaction_type in ['standard']:
+        reactions = chem.get_reactions_by_type(reaction_type)
+        for rnum,reaction in enumerate(reactions.values()):
+            # Handle sk_coef
+            for species_dict, sign in [(reaction['reacts'], -1), (reaction['prods'], 1)]:
+                for s in species_dict:
+                    sk_coef[rnum*chem.n_species_sk + chem.stoi[s]] += sign*species_dict[s]
+
+            # Handle wdot_coef
+            ##this is opposite of others
+            for species_dict, sign in [(reaction['reacts'], -1), (reaction['prods'], 1)]:
+                for s in species_dict:
+                    wdot_coef[rnum + chem.stoi_red[s]*len(reactions)] \
+                    += sign*species_dict[s]
+
+            # Handle coef_r
+            for s in reaction['reacts']:
+                coef_r[rnum*chem.n_species_red + chem.stoi_red[s]] += reaction['reacts'][s]
+
+            # Handle coef_p
+            for s in reaction['prods']:
+                coef_p[rnum*chem.n_species_red + chem.stoi_red[s]] += reaction['prods'][s]
+
+
+    for coef_name, coef_array in [("sk_coef_h", sk_coef), 
+                                  ("coef_r_h", coef_r), 
+                                  ("coef_p_h", coef_p), 
+                                  ("wdot_coef_h", wdot_coef)]:
+        lines = []
+        curr_line = ""
+        for c in coef_array:
+            curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
+        if(len(curr_line) > 0):
+            lines.append(curr_line[:-1]+"&\n")
+        new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+    
+    return new_lines
+
 def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_block=None,veclen=None):
-    assert parallel_level > 0 and parallel_level < 4
+    assert parallel_level > 0 and parallel_level < 5
     if parallel_level > 1:
         assert nreact_per_block is not None
         assert veclen is not None
     
     header_content = get_header_content(chem,
                                         parallel_level,
-                                        nreact_per_block)
+                                        nreact_per_block,
+                                        rocblas = parallel_level==4)
     
     with open(f"{dirname}/constants_v{parallel_level}.h", "w") as f:
         f.write(header_content)
     
-    if(parallel_level > 2):
+    if(parallel_level > 2 and parallel_level != 4):
         print("Used default value of NSP_PER_BLOCK")
         nsp_per_block = calculate_possible_nsp_per_block(chem,
                                                          nreact_per_block,
@@ -157,7 +213,7 @@ def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_
     return
 
 def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block=None):
-    assert parallel_level > 0 and parallel_level < 4
+    assert parallel_level > 0 and parallel_level < 5
     if parallel_level > 1:
         assert nreact_per_block is not None
     
@@ -169,12 +225,17 @@ def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block
         arrhenius_lines = write_arrhenius_constants(chem,parallel_level,nreact_per_block)
         f.writelines(arrhenius_lines)
         
-        # Write maps
-        map_lines = write_maps(chem,parallel_level,nreact_per_block)
-        f.writelines(map_lines)
+        #v4 version doesn't need maps it just uses rocblas without any transformation
+        if(parallel_level != 4):
+            # Write maps
+            map_lines = write_maps(chem,parallel_level,nreact_per_block)
+            f.writelines(map_lines)
         
         # Write coefficients
-        coef_lines = write_coefficients(chem,parallel_level,nreact_per_block)
+        if parallel_level == 4:
+            coef_lines = write_rocblas_coefficients(chem,nreact_per_block)
+        else:
+            coef_lines = write_coefficients(chem,parallel_level,nreact_per_block)
         f.writelines(coef_lines)
         
         f.write(f"end module coef_m_v{parallel_level}\n")
