@@ -348,16 +348,16 @@ class chemistry_expressions:
             for rtype in self.chem.reaction_types:
                 f.write(f"    {'#' if self.language == 'python' else '!'} Reaction type: {rtype}\n")
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
-                    if(self.omp):
-                        if(rnum == 0):
-                            f.write(omp_startdo+"\n")
-                            f.write(startdo+"\n")
-                        elif(rnum%30 == 0):
-                            f.write(enddo+"\n")
-                            f.write(omp_enddo+"\n")
-                            f.write(omp_startdo+"\n")
-                            f.write(startdo+"\n")
                     if(self.chem.reactions[reaction_number]["type"] == rtype):
+                        if(self.omp):
+                            if(rnum == 0):
+                                f.write(omp_startdo+"\n")
+                                f.write(startdo+"\n")
+                            elif(rnum%30 == 0):
+                                f.write(enddo+"\n")
+                                f.write(omp_enddo+"\n")
+                                f.write(omp_startdo+"\n")
+                                f.write(startdo+"\n")
                         f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
                         f.write(self.reaction_expressions[reaction_number])
                         f.write("\n")
