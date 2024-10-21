@@ -62,6 +62,87 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
 
     return new_lines
 
+
+def write_molwts(chem: chemistry,parallel_level=1,nreact_per_block=None):
+    if parallel_level > 1:
+        assert nreact_per_block is not None
+    
+    new_lines = []
+    mw_lines = []
+
+    for sp in chem.species_dict.values():
+        line = f"{space}{sp.molecular_weight:21.15E},& \n".replace("E", "D")
+        mw_lines.append(line)
+    mw_lines[-1] = mw_lines[-1][:-4]+"&\n"
+    new_lines = add_new_array("real", "mw_h", chem.n_species_red, mw_lines, new_lines)
+    return new_lines
+
+def write_thermo_data(chem: chemistry,parallel_level=1,nreact_per_block=None):
+    if parallel_level > 1:
+        assert nreact_per_block is not None
+    
+    new_lines = []
+    thermo_lines = []
+    T_mids = []
+
+    for sp in chem.species_dict.values():
+        low = sp.input_data["thermo"]["data"][0]
+        high = sp.input_data["thermo"]["data"][1]
+        T_mid = sp.input_data["thermo"]["temperature-ranges"][1]
+
+        T_mids.append(f"{T_mid:.2E},& \n".replace("E","D"))
+
+        # Low temperature coefficients
+        #0
+        line = f"{space}{low[6]-low[0]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #1
+        line = f"{space}{low[0]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #2
+        line = f"{space}{low[1]/2.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #3
+        line = f"{space}{low[2]/6.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #4
+        line = f"{space}{low[3]/12.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #5
+        line = f"{space}{low[4]/20.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #6
+        line = f"{space}{-low[5]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+
+        # High temperature coefficients
+        #0
+        line = f"{space}{high[6]-high[0]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #1
+        line = f"{space}{high[0]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #2
+        line = f"{space}{high[1]/2.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #3
+        line = f"{space}{high[2]/6.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #4
+        line = f"{space}{high[3]/12.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #5
+        line = f"{space}{high[4]/20.0:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+        #6
+        line = f"{space}{-high[5]:21.15E},& \n".replace("E", "D")
+        thermo_lines.append(line)
+    thermo_lines[-1] = thermo_lines[-1][:-4]+"&\n"
+    T_mids[-1] = T_mids[-1][:-4]+"&\n"
+    new_lines = add_new_array("real", "T_mid_h", chem.n_species_sk, T_mids, new_lines)
+    new_lines = add_new_array("real", "smh_coef_h", chem.n_species_sk*14, thermo_lines, new_lines)
+    return new_lines
+
 def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
     if parallel_level > 1:
         assert nreact_per_block is not None
@@ -237,6 +318,9 @@ def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block
         else:
             coef_lines = write_coefficients(chem,parallel_level,nreact_per_block)
         f.writelines(coef_lines)
+
+        f.writelines(write_molwts(chem,parallel_level,nreact_per_block))
+        f.writelines(write_thermo_data(chem,parallel_level,nreact_per_block))
         
         f.write(f"end module coef_m_v{parallel_level}\n")
     

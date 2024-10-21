@@ -29,6 +29,9 @@ __device__ __constant__ int map_r_d[MAX_SP*NREACT_MECH];
 __device__ __constant__ double coef_r_d[MAX_SP*NREACT_MECH];
 __device__ __constant__ int map_p_d[MAX_SP*NREACT_MECH];
 __device__ __constant__ double coef_p_d[MAX_SP*NREACT_MECH];
+__device__ __constant__ double mw_d[NSP_RED];
+__device__ __constant__ double smh_coef_d[NSP_SK*14];
+__device__ __constant__ double T_mid_d[NSP_SK];
 """
 
 # Copy constants to device function
@@ -41,7 +44,10 @@ extern "C" {
                            const int* map_r_h,
                            const double* coef_r_h,
                            const int* map_p_h,
-                           const double* coef_p_h)
+                           const double* coef_p_h,
+                           const double* mw_h,
+                           const double* smh_coef_h,
+                           const double* T_mid_h)
     {
         hipMemcpyToSymbol(A_d, A_h, sizeof(double) * NREACT_MECH);
         hipMemcpyToSymbol(B_d, B_h, sizeof(double) * NREACT_MECH * 2);
@@ -51,6 +57,9 @@ extern "C" {
         hipMemcpyToSymbol(coef_r_d, coef_r_h, sizeof(double) * NREACT_MECH * MAX_SP);
         hipMemcpyToSymbol(map_p_d, map_p_h, sizeof(int) * NREACT_MECH * MAX_SP);
         hipMemcpyToSymbol(coef_p_d, coef_p_h, sizeof(double) * NREACT_MECH * MAX_SP);
+        hipMemcpyToSymbol(mw_d, mw_h, sizeof(double) * NSP_RED);
+        hipMemcpyToSymbol(smh_coef_d, smh_coef_h, sizeof(double) * NSP_SK * 14);
+        hipMemcpyToSymbol(T_mid_d, T_mid_h, sizeof(double) * NSP_SK);
     }
 }
 """
@@ -64,6 +73,9 @@ __device__ double* sk_coef_d;
 __device__ double* coef_r_d;
 __device__ double* coef_p_d;
 __device__ double* wdot_coef_d;
+__device__ __constant__ double mw_d[NSP_RED];
+__device__ __constant__ double smh_coef_d[NSP_SK*14];
+__device__ __constant__ double T_mid_d[NSP_SK];
 
 //intermediate arrays
 __device__ double *rr_d;
@@ -118,7 +130,10 @@ extern "C" {
                            const double* sk_coef_h,
                            const double* coef_r_h,
                            const double* coef_p_h,
-                           const double* wdot_coef_h)
+                           const double* wdot_coef_h,
+                           const double* mw_h,
+                           const double* smh_coef_h,
+                           const double* T_mid_h)
     {
         hipError_t err;
 
@@ -208,6 +223,9 @@ extern "C" {
             fprintf(stderr, "Failed to copy wdot_coef_d: %s\\n", hipGetErrorString(err));
             goto cleanup;
         }
+        hipMemcpyToSymbol(mw_d, mw_h, sizeof(double) * NSP_RED);
+        hipMemcpyToSymbol(smh_coef_d, smh_coef_h, sizeof(double) * NSP_SK * 14);
+        hipMemcpyToSymbol(T_mid_d, T_mid_h, sizeof(double) * NSP_SK);
 
         return;
 
