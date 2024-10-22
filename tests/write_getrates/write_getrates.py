@@ -24,15 +24,15 @@ chem = chemistry(ck_file,ckp,therm_file=therm_file)
 #write fortran omp gpu version
 chem_expr =chemistry_expressions(chem,omp=True,language="fortran")
 filename = os.path.join(os.path.dirname(abs_path),f"getrates_gpu_CH4_NUI_sk50.f90")
-chem_expr.write_expressions_to_file(filename)
+chem_expr.write_expressions_to_file(filename,write_rtypes_together=False)
 ##write fortran vector version
-chem_expr =chemistry_expressions(chem,omp=False,vec=True,language="fortran")
-filename = os.path.join(os.path.dirname(abs_path),f"getrates_i_CH4_NUI_sk50.f90")
-chem_expr.write_expressions_to_file(filename)
-#write fortran scalar version
-chem_expr =chemistry_expressions(chem,omp=False,vec=False,language="fortran")
-filename = os.path.join(os.path.dirname(abs_path),f"getrates_CH4_NUI_sk50.f90")
-chem_expr.write_expressions_to_file(filename)
+# chem_expr =chemistry_expressions(chem,omp=False,vec=True,language="fortran")
+# filename = os.path.join(os.path.dirname(abs_path),f"getrates_i_CH4_NUI_sk50.f90")
+# chem_expr.write_expressions_to_file(filename)
+# #write fortran scalar version
+# chem_expr =chemistry_expressions(chem,omp=False,vec=False,language="fortran")
+# filename = os.path.join(os.path.dirname(abs_path),f"getrates_CH4_NUI_sk50.f90")
+# chem_expr.write_expressions_to_file(filename)
 
 
 

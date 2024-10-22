@@ -197,7 +197,7 @@ class chemistry_expressions:
         if(self.omp and self.language == "python"):
             raise ValueError("omp only works with fortran")
         self.create_expressions()
-        self.Rc = 1.9872155832  # cal/(mol·K)
+        self.Rc = 1.987215575926745  # cal/(mol·K)
         self.R0 = 8.314510e+07
         self.Patm = 1013250.0
 
@@ -315,7 +315,7 @@ class chemistry_expressions:
         expr = '\n'.join('    ' + line.rstrip() if not line.strip().startswith('!$') else line.rstrip() for line in rendered_string.split('\n') if line.strip())
         return expr
 
-    def write_expressions_to_file(self, filename):
+    def write_expressions_to_file(self, filename, write_rtypes_together=False):
         thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
         omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
         omp_enddo = "!$omp end target teams distribute parallel do"
@@ -345,15 +345,31 @@ class chemistry_expressions:
             f.write("\n")
             
             rnum = 0
-            for rtype in self.chem.reaction_types:
-                f.write(f"    {'#' if self.language == 'python' else '!'} Reaction type: {rtype}\n")
+            if(write_rtypes_together):
+                for rtype in self.chem.reaction_types:
+                    f.write(f"    {'#' if self.language == 'python' else '!'} Reaction type: {rtype}\n")
+                    for reaction_number, reaction_expr in self.reaction_expressions.items():
+                        if(self.chem.reactions[reaction_number]["type"] == rtype):
+                            if(self.omp):
+                                if(rnum == 0):
+                                    f.write(omp_startdo+"\n")
+                                    f.write(startdo+"\n")
+                                elif(rnum%10 == 0):
+                                    f.write(enddo+"\n")
+                                    f.write(omp_enddo+"\n")
+                                    f.write(omp_startdo+"\n")
+                                    f.write(startdo+"\n")
+                            f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                            f.write(self.reaction_expressions[reaction_number])
+                            f.write("\n")
+                            rnum += 1
+            else:
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
-                    if(self.chem.reactions[reaction_number]["type"] == rtype):
                         if(self.omp):
                             if(rnum == 0):
                                 f.write(omp_startdo+"\n")
                                 f.write(startdo+"\n")
-                            elif(rnum%30 == 0):
+                            elif(rnum%10 == 0):
                                 f.write(enddo+"\n")
                                 f.write(omp_enddo+"\n")
                                 f.write(omp_startdo+"\n")
@@ -362,6 +378,7 @@ class chemistry_expressions:
                         f.write(self.reaction_expressions[reaction_number])
                         f.write("\n")
                         rnum += 1
+
             if(self.omp):
                 f.write(enddo+"\n")
                 f.write(omp_enddo+"\n")
