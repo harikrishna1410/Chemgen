@@ -267,14 +267,16 @@ def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
     
     return new_lines
 
-def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_block=None,veclen=None):
+def write_constants_header(dirname, chem: chemistry,parallel_level=1,veclen=None,nreact_per_block=None):
     assert parallel_level > 0 and parallel_level < 5
+    assert veclen is not None
     if parallel_level > 1:
         assert nreact_per_block is not None
         assert veclen is not None
     
     header_content = get_header_content(chem,
                                         parallel_level,
+                                        veclen,
                                         nreact_per_block,
                                         rocblas = parallel_level==4)
     
@@ -288,6 +290,26 @@ def write_constants_header(dirname, chem: chemistry,parallel_level=1,nreact_per_
                                                          veclen,
                                                          threads_per_block_ulimit=1024)
         print(f"Possible values of NSP_PER_BLOCK: {nsp_per_block}")
+    
+    max_lds_size = 64*1024
+
+    if(parallel_level==1):
+        lds_usage = chem.n_species_sk*veclen*8 + chem.n_species_red*veclen*8
+        if(lds_usage > max_lds_size):
+            print(f"WARNING: lds_size exceedes the max lds size")
+            print(f"parallel_level:{parallel_level}, veclen:{veclen}")
+    elif(parallel_level == 2):
+        lds_usage = chem.n_species_sk*veclen*8 + chem.n_species_red*veclen*8*2
+        if(lds_usage > max_lds_size):
+            print(f"WARNING: lds_size exceedes the max lds size")
+            print(f"parallel_level:{parallel_level}, veclen:{veclen}, nreact_per_block:{nreact_per_block}")
+    elif(parallel_level == 3):
+        for n in nsp_per_block:
+            lds_usage = chem.n_species_sk*veclen*8 + chem.n_species_red*veclen*8*2 + n*veclen*nreact_per_block*8
+            if(lds_usage > max_lds_size):
+                print(f"WARNING: lds_size exceedes the max lds size")
+                print(f"parallel_level:{parallel_level}, veclen:{veclen}, nreact_per_block:{nreact_per_block}, nsp_per_block:{n}")
+
     
     # with open(f"{dirname}/copy_constants.cpp", "w") as f:
     #     f.write(COPY_CONSTANTS_TO_DEVICE_FUNC)

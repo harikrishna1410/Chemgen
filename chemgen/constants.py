@@ -9,6 +9,7 @@ PATM = 1.01325e6  # atmospheric pressure
 # Default parallelization constants
 DEFAULT_NREACT_PER_BLOCK = 1
 DEFAULT_NSP_PER_BLOCK = 1
+DEFAULT_VECLEN=64
 
 # Element weights
 ELEM_WT = {
@@ -242,6 +243,7 @@ extern "C" {
 
 def get_header_content(chem: chemistry,
                        parallel_level=1,
+                       veclen=DEFAULT_VECLEN,
                        nreact_per_block=DEFAULT_NREACT_PER_BLOCK,
                        rocblas=False):
     max_specs = chem.find_max_specs(parallel_level>2)
@@ -271,6 +273,8 @@ def get_header_content(chem: chemistry,
 #define MAX_SP2 {max_specs*2}
 //max third body third body reactants
 #define MAX_THIRD_BODIES {chem.find_max_third_body()}
+//veclen
+#define VECLEN {veclen}
 //when using more v2 and v3 parallelisation
 //this had to divide all NREACT_* variables
 #define NREACT_PER_BLOCK {nreact_per_block if nreact_per_block is not None else DEFAULT_NREACT_PER_BLOCK} //number of reactions solved per thread block
