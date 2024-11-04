@@ -2,7 +2,7 @@
 This script writes all the constants to a file.
 """
 
-from .constants import get_header_content, RU, SMALL, PATM, COPY_CONSTANTS_TO_DEVICE_FUNC
+from .constants import get_header_content, RU, SMALL, PATM
 from .writer_utils import *
 from .chemistry import chemistry
 import sys
@@ -34,11 +34,14 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
         assert nreact_per_block is not None
     
     new_lines = []
-    A_lines, B_lines, A0_troe_lines, B0_troe_lines = [], [], [], []
+
     nr_calc, nr_troe = 0, 0
 
-    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+        A_lines, B_lines, A0_troe_lines, B0_troe_lines = [], [], [], []
         reactions = chem.get_reactions_by_type(reaction_type)
+        if(len(reactions.keys())==0):
+            continue
         if nreact_per_block is not None:
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
@@ -54,11 +57,17 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
             nr_troe, A0, B0 = get_arh_coef_lines(reactions, troe=True)
             A0_troe_lines.extend(A0)
             B0_troe_lines.extend(B0)
+        
+        type_suffix = "" if reaction_type == "standard" else \
+                     "_inf_troe" if reaction_type == "troe" else \
+                     "_third" if reaction_type == "third_body" else "_plog"
 
-    new_lines = add_new_array("real", "A_h", nr_calc, A_lines, new_lines)
-    new_lines = add_new_array("real", "B_h", 2*nr_calc, B_lines, new_lines)
-    new_lines = add_new_array("real", "A0_troe_h", nr_troe, A0_troe_lines, new_lines)
-    new_lines = add_new_array("real", "B0_troe_h", 2*nr_troe, B0_troe_lines, new_lines)
+        new_lines = add_new_array("real", f"A{type_suffix}_h", nr, A_lines, new_lines)
+        new_lines = add_new_array("real", f"B{type_suffix}_h", 2*nr, B_lines, new_lines)
+
+        if(reaction_type == "troe"):
+            new_lines = add_new_array("real", f"A_0_troe_h", nr_troe, A0_troe_lines, new_lines)
+            new_lines = add_new_array("real", "B_0_troe_h", 2*nr_troe, B0_troe_lines, new_lines)
 
     return new_lines
 
@@ -151,10 +160,11 @@ def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
     r_dict = chem.reactions
     max_sp = chem.find_max_specs(parallel_level>2)
 
-    sk_map, map_r, map_p = [], [], []
-    
-    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+        sk_map, map_r, map_p = [], [], []
         reactions = chem.get_reactions_by_type(reaction_type)
+        if(len(reactions.keys())==0):
+            continue
         if nreact_per_block is not None:    
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
@@ -168,14 +178,20 @@ def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
                 sk_map.extend([0] * pad_length)
                 map_list.extend([0] * pad_length)
 
-    for map_name, map_data in [("sk_map_h", sk_map), ("map_r_h", map_r), ("map_p_h", map_p)]:
-        lines = []
-        curr_line = ""
-        for m in map_data:
-            curr_line, lines = append_new_str(f"{m},", curr_line, lines)
-        if(len(curr_line) > 0):
-            lines.append(curr_line[:-1]+"&\n")
-        new_lines = add_new_array("integer", map_name, len(map_data), lines, new_lines)
+        type_suffix = "" if reaction_type == "standard" else \
+                     "_troe" if reaction_type == "troe" else \
+                     "_third" if reaction_type == "third_body" else "_plog"
+                     
+        for map_name, map_data in [(f"sk_map{type_suffix}_h", sk_map), 
+                                  (f"map_r{type_suffix}_h", map_r), 
+                                  (f"map_p{type_suffix}_h", map_p)]:
+            lines = []
+            curr_line = ""
+            for m in map_data:
+                curr_line, lines = append_new_str(f"{m},", curr_line, lines)
+            if(len(curr_line) > 0):
+                lines.append(curr_line[:-1]+"&\n")
+            new_lines = add_new_array("integer", map_name, len(map_data), lines, new_lines)
     return new_lines
 
 def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None):
@@ -186,10 +202,11 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
     r_dict = chem.reactions
     max_sp = chem.find_max_specs(parallel_level>2)
 
-    sk_coef, coef_r, coef_p = [], [], []
-    
-    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
+        sk_coef, coef_r, coef_p = [], [], []
         reactions = chem.get_reactions_by_type(reaction_type)
+        if(len(reactions.keys())==0):
+            continue
         if nreact_per_block is not None:    
             if len(reactions)%nreact_per_block != 0:
                 for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
@@ -201,16 +218,93 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
                 coef_list.extend([species_dict[s] * sign for s in species_dict])
                 coef_list.extend([0.0] * (max_sp - len(species_dict)))
 
-    for coef_name, coef_array in [("sk_coef_h", sk_coef), ("coef_r_h", coef_r), ("coef_p_h", coef_p)]:
+        type_suffix = "" if reaction_type == "standard" else \
+                     "_troe" if reaction_type == "troe" else \
+                     "_third" if reaction_type == "third_body" else "_plog"
+                     
+        for coef_name, coef_array in [(f"sk_coef{type_suffix}_h", sk_coef), 
+                                     (f"coef_r{type_suffix}_h", coef_r), 
+                                     (f"coef_p{type_suffix}_h", coef_p)]:
+            lines = []
+            curr_line = ""
+            for c in coef_array:
+                curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
+            if(len(curr_line) > 0):
+                lines.append(curr_line[:-1]+"&\n")
+            new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+    
+    return new_lines
+
+def write_third_body_efficiencies(chem: chemistry, parallel_level=1, nreact_per_block=None):
+    if parallel_level > 1:
+        assert nreact_per_block is not None
+    
+    new_lines = []
+    r_dict = chem.reactions
+    max_sp = chem.find_max_specs(parallel_level>2)
+
+    for reaction_type in ['troe', 'third_body']:
+        coef_array = []
+        reactions = chem.get_reactions_by_type(reaction_type)
+        if(len(reactions.keys())==0):
+            continue
+        if nreact_per_block is not None:    
+            if len(reactions)%nreact_per_block != 0:
+                for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
+                    chem.add_dummy_reaction(reaction_type)
+        reactions = chem.get_reactions_by_type(reaction_type)
+        for reaction in reactions.values():
+            for spec in chem.reduced_species:
+                coef_array.append(1.0+reaction.get("third_body",{}).get(spec,0.0))
+
+        type_suffix = "" if reaction_type == "standard" else \
+                     "_troe" if reaction_type == "troe" else \
+                     "_third" if reaction_type == "third_body" else "plog"
+                     
+        coef_name = f"eff_fac{type_suffix}_h"
         lines = []
         curr_line = ""
         for c in coef_array:
-            curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
+            curr_line, lines = append_new_str(f"{c:21.15E},".replace("E","D"), curr_line, lines)
         if(len(curr_line) > 0):
             lines.append(curr_line[:-1]+"&\n")
         new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
+
+def write_fcent_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None):
+    if parallel_level > 1:
+        assert nreact_per_block is not None
+    
+    new_lines = []
+    reaction_type  = 'troe'
+    coef_array = []
+    reactions = chem.get_reactions_by_type(reaction_type)
+    if(len(reactions.keys())==0):
+        return new_lines
+    if nreact_per_block is not None:    
+        if len(reactions)%nreact_per_block != 0:
+            for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
+                chem.add_dummy_reaction(reaction_type)
+    reactions = chem.get_reactions_by_type(reaction_type)
+    for reaction in reactions.values():
+        falloff_coeffs = reaction["troe"]["troe"] #(a,T***,T*,T**(optional))
+        coef_array.extend([1.0-falloff_coeffs[0],falloff_coeffs[1],falloff_coeffs[0],falloff_coeffs[2]])
+        if(len(falloff_coeffs)>3):
+            coef_array.extend([1.0,falloff_coeffs[3]])
+        else:
+            coef_array.extend([0.0,0.0])
+                     
+    lines = []
+    curr_line = ""
+    for c in coef_array:
+        curr_line, lines = append_new_str(f"{c:21.15E},".replace("E","D"), curr_line, lines)
+    if(len(curr_line) > 0):
+        lines.append(curr_line[:-1]+"&\n")
+    new_lines = add_new_array("real", "fcent_coef_troe_h" , len(coef_array), lines, new_lines)
+    
+    return new_lines
+
 
 def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
     
@@ -339,6 +433,12 @@ def write_coef_module(dirname, chem: chemistry,parallel_level=1,nreact_per_block
             coef_lines = write_rocblas_coefficients(chem,nreact_per_block)
         else:
             coef_lines = write_coefficients(chem,parallel_level,nreact_per_block)
+        f.writelines(coef_lines)
+
+        coef_lines = write_third_body_efficiencies(chem,parallel_level,nreact_per_block)
+        f.writelines(coef_lines)
+
+        coef_lines = write_fcent_coefficients(chem,parallel_level,nreact_per_block)
         f.writelines(coef_lines)
 
         f.writelines(write_molwts(chem,parallel_level,nreact_per_block))

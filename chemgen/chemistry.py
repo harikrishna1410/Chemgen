@@ -165,8 +165,8 @@ class chemistry:
         # Add additional fields based on reaction type
         if reaction_type == "troe":
             dummy_reaction["troe"] = {
-                "low": (0.0, 0.0, 0.0),
-                "troe": (0.0, 0.0, 0.0, 0.0)
+                "low": (1.0, 0.0, 0.0),
+                "troe": (0.0, 0.0, 0.0)
             }
         elif reaction_type == "third_body":
             dummy_reaction["third_body"] = {first_species: 0.0}
