@@ -312,19 +312,20 @@ def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
     r_dict = chem.reactions
 
     ##pad the mechanism
-    for reaction_type in ['standard']:#, 'troe', 'third_body', 'plog']:
+    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
         reactions = chem.get_reactions_by_type(reaction_type)
         if len(reactions)%nreact_per_block != 0:
             for i in range(0,nreact_per_block - len(reactions)%nreact_per_block):
                 chem.add_dummy_reaction(reaction_type)
-
-    sk_coef = np.zeros((chem.n_species_sk*chem.get_num_reactions_by_type("standard"),))
-    coef_r = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
-    coef_p = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
-    wdot_coef = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type("standard"),))
     
-    for reaction_type in ['standard']:
+    for reaction_type in ['standard', 'troe', 'third_body', 'plog']:
         reactions = chem.get_reactions_by_type(reaction_type)
+        if(chem.get_num_reactions_by_type(reaction_type)==0):
+            continue
+        sk_coef = np.zeros((chem.n_species_sk*chem.get_num_reactions_by_type(reaction_type),))
+        coef_r = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type(reaction_type),))
+        coef_p = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type(reaction_type),))
+        wdot_coef = np.zeros((chem.n_species_red*chem.get_num_reactions_by_type(reaction_type),))
         for rnum,reaction in enumerate(reactions.values()):
             # Handle sk_coef
             for species_dict, sign in [(reaction['reacts'], -1), (reaction['prods'], 1)]:
@@ -346,18 +347,20 @@ def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
             for s in reaction['prods']:
                 coef_p[rnum*chem.n_species_red + chem.stoi_red[s]] += reaction['prods'][s]
 
-
-    for coef_name, coef_array in [("sk_coef_h", sk_coef), 
-                                  ("coef_r_h", coef_r), 
-                                  ("coef_p_h", coef_p), 
-                                  ("wdot_coef_h", wdot_coef)]:
-        lines = []
-        curr_line = ""
-        for c in coef_array:
-            curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
-        if(len(curr_line) > 0):
-            lines.append(curr_line[:-1]+"&\n")
-        new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+        type_suffix = "" if reaction_type == "standard" else \
+                     "_troe" if reaction_type == "troe" else \
+                     "_third" if reaction_type == "third_body" else "_plog"
+        for coef_name, coef_array in [(f"sk_coef{type_suffix}_h", sk_coef), 
+                                      (f"coef_r{type_suffix}_h", coef_r), 
+                                      (f"coef_p{type_suffix}_h", coef_p), 
+                                      (f"wdot_coef{type_suffix}_h", wdot_coef)]:
+            lines = []
+            curr_line = ""
+            for c in coef_array:
+                curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
+            if(len(curr_line) > 0):
+                lines.append(curr_line[:-1]+"&\n")
+            new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
 
