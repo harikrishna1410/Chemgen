@@ -1,0 +1,35 @@
+subroutine {{ subroutine_name }}(P, T{% if vec or omp %}, veclen{% endif %}, Y, wdot{% if omp and not mod %}, C, EG, CTOT{% endif %})
+    implicit none
+    {% if vec or omp %}integer, intent(in) :: veclen{% endif %}
+    {% if vec or omp %}real(kind=8), dimension(veclen), intent(in) :: T, P
+    real(kind=8), dimension(veclen, {{ n_species_red }}), intent(in) :: Y
+    real(kind=8), dimension(veclen, {{ n_species_red }}), intent(out) :: wdot{% else %}
+    real(kind=8), intent(in) :: T, P
+    real(kind=8), dimension({{ n_species_red }}), intent(in) :: Y
+    real(kind=8), dimension({{ n_species_red }}), intent(out) :: wdot{% endif %}{% if omp%}{% if not mod %}
+    real(kind=8), dimension(veclen, {{ n_species_red }}) :: C
+    real(kind=8), dimension(veclen, {{ n_species_sk }}) :: EG
+    real(kind=8), dimension(veclen) :: ctot{% endif %}{% else %}{% if vec %}
+    real(kind=8), dimension(veclen, {{ n_species_red }}) :: C
+    real(kind=8), dimension(veclen, {{ n_species_sk }}) :: EG
+    real(kind=8), dimension(veclen) :: ctot
+    real(kind=8), dimension(veclen) :: pfac{% else %}
+    real(kind=8), dimension({{ n_species_red }}) :: C
+    real(kind=8), dimension({{ n_species_sk }}) :: EG
+    real(kind=8) :: ctot
+    real(kind=8) :: pfac{% endif %}{% endif %}
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: kf, kb
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: rr
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: M
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: k0, kinf, Pr, Fcent
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: C1, N, F1, F
+    real(kind=8){% if vec %}, dimension(veclen){% endif %} :: logPr, logFcent
+    real(kind=8) :: smh
+    real(kind=8), parameter :: Rc = {{ Rc }}D0
+    real(kind=8), parameter :: R0 = {{ R0 }}D0
+    real(kind=8), parameter :: Patm = {{ Patm }}D0
+    real(kind=8) :: kfl, kfh, kbl, logPl, logPh
+    integer :: i,L
+
+    {% if not omp %}pfac = Patm / (R0 * T)
+    wdot = 0.0d0{% endif %}

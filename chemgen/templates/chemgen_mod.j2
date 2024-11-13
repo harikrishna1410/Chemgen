@@ -1,0 +1,49 @@
+#ifdef USE_CHEMGEN_GPU
+#ifndef OMP_CHEM
+#define OMP_CHEM
+#endif
+!!Hari: this is wrapper for all types of gpu chemistries omp, HIP various levels of parallelism, rocBLAS.
+!!Auto generated
+module chemgen_m
+implicit none
+private
+!!this is the intermediate array needed in chemistry computation
+real, allocatable, dimension(:,:) :: EG, C
+real,allocatable, dimension(:) :: CTOT
+
+public :: init_chemgen
+public :: getrates_gpu
+contains
+!***************************************************************
+!!this allocates and pushes the intermediate arrays needed in chemistry to the device
+subroutine init_chemgen(flag,ng)
+    implicit none
+    integer,intent(in) :: flag
+    integer,intent(in) :: ng
+    if(flag .eq. 1)then
+        allocate(EG(ng,{{ n_species_sk }}))
+        allocate(C(ng,{{ n_species_red }}))
+        allocate(CTOT(ng))
+!$omp target enter data map(to:EG,C,CTOT)
+    else
+!$omp target exit data map(delete:EG,C,CTOT)
+        deallocate(EG)
+        deallocate(C)
+        deallocate(CTOT)
+    endif
+end subroutine
+!***************************************************************
+subroutine getrates_gpu(P, T, ng, Y, ickwrk, rckwrk, wdot)
+    implicit none
+    integer, intent(in) :: ng
+    real(kind=8), dimension(ng), intent(in) :: T, P
+    real(kind=8), dimension(ng, {{ n_species_red }}), intent(in) :: Y
+    integer, intent(in) :: ickwrk(*)
+    real(kind=8), intent(in) :: rckwrk(*)
+    real(kind=8), dimension(ng, {{ n_species_red }}), intent(out) :: wdot
+
+#ifdef OMP_CHEM
+    call getrates_omp_gpu(P, T, ng, Y, wdot)
+#endif
+end subroutine
+!***************************************************************

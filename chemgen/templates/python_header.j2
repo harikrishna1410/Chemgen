@@ -1,0 +1,56 @@
+import numpy as np
+{% if vec %}
+def getrates_i(veclen, T, Y, P, wdot):
+    C = np.zeros((veclen, {{ n_species_red }}))
+    EG = np.zeros((veclen, {{ n_species_sk }}))
+    kf = np.zeros(veclen)
+    kb = np.zeros(veclen)
+    rr = np.zeros(veclen)
+    ctot = np.zeros(veclen)
+    M = np.zeros(veclen)
+    # Add intermediate variables for troe and plog reactions
+    k0 = np.zeros(veclen)
+    kinf = np.zeros(veclen)
+    Pr = np.zeros(veclen)
+    Fcent = np.zeros(veclen)
+    C1 = np.zeros(veclen)
+    N = np.zeros(veclen)
+    F1 = np.zeros(veclen)
+    F = np.zeros(veclen)
+    logPr = np.zeros(veclen)
+    logFcent = np.zeros(veclen)
+    smh = np.zeros(veclen)
+    wdot[:,:] = 0.0
+{% else %}
+def getrates(T, Y, P, wdot):
+    C = np.zeros({{ n_species_red }})
+    EG = np.zeros({{ n_species_sk }})
+    kf = 0.0
+    kb = 0.0
+    rr = 0.0
+    ctot = 0.0
+    M = 0.0
+    # Add intermediate variables for troe and plog reactions
+    k0 = 0.0
+    kinf = 0.0
+    Pr = 0.0
+    Fcent = 0.0
+    C1 = 0.0
+    N = 0.0
+    F1 = 0.0
+    F = 0.0
+    logPr = 0.0
+    logFcent = 0.0
+    smh = 0.0
+    wdot[:] = 0.0
+{% endif %}
+    Rc = {{ Rc }}
+    R0 = {{ R0 }}
+    Patm = {{ Patm }}
+    kfl = 0.0
+    kfh = 0.0
+    kbl = 0.0
+    logPl = 0.0
+    logPh = 0.0
+
+    pfac = Patm/(R0*T)

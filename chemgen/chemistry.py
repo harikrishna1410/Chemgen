@@ -180,7 +180,7 @@ class chemistry:
         return dummy_reaction_number
 
 class chemistry_expressions:
-    def __init__(self, chem, vec=False, omp = False, language='python'):
+    def __init__(self, chem, vec=False, omp = False, mod=False,language='python'):
         self.chem = chem        
         self.reaction_expressions = {}
         self.ytoc_expr = []
@@ -191,6 +191,7 @@ class chemistry_expressions:
 
         self.vec = vec
         self.omp = omp
+        self.mod = mod
         if(self.vec and self.omp):
             raise ValueError("both vec and omp can't be true")
         
@@ -316,210 +317,289 @@ class chemistry_expressions:
         return expr
 
     def write_expressions_to_file(self, filename, write_rtypes_together=False):
-        thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
-        omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
-        omp_enddo = "!$omp end target teams distribute parallel do"
-        startdo ="    do i = 1,veclen"
-        enddo = "    enddo"
-        with open(filename, 'w') as f:
-            if self.language == 'python':
-                self.write_python_header(f)
-            else:  # Fortran
-                self.write_fortran_header(f)
-            
-            # Write ytoc expressions
-            f.write("    # Y to C conversion\n" if self.language == 'python' else "    ! Y to C conversion\n")
-            i = 0
+        if self.language == 'python':
+            self._write_python_expressions(filename, write_rtypes_together)
+        elif self.language == 'fortran':
             if self.omp:
-                f.write("    C = 0.0d0\n")
-                f.write("    ctot = 0.0d0\n")
-                f.write("    EG = 0.0d0\n")
-                f.write("!$omp target enter data map(to:C,ctot,EG)\n")
-                f.write("!$omp target data use_device_ptr(Y,T,P,wdot,C,ctot,EG)\n")
+                if self.mod:
+                    self._write_chemgen_mod(filename, write_rtypes_together)
+                else:
+                    self._write_omp_expressions(filename, write_rtypes_together) 
+            else:
+                self._write_fortran_expressions(filename, write_rtypes_together)
+        print(f"Expressions and getrates function written to {filename}")
+
+    def _write_python_expressions(self, filename, write_rtypes_together):
+        with open(filename, 'w') as f:
+            self.write_python_header(f)
+            
+            f.write("    # Y to C conversion\n")
             f.write(self.ytoc_expr)
             f.write("\n")
             
-            # Write exp_g expressions
-            f.write("    # Exponential G calculations\n" if self.language == 'python' else "    ! Exponential G calculations\n")
+            f.write("    # Exponential G calculations\n") 
             f.write(self.exp_g_expr)
             f.write("\n")
-            
-            rnum = 0
-            if(write_rtypes_together):
+
+            if write_rtypes_together:
                 for rtype in self.chem.reaction_types:
-                    f.write(f"    {'#' if self.language == 'python' else '!'} Reaction type: {rtype}\n")
+                    f.write(f"    # Reaction type: {rtype}\n")
                     for reaction_number, reaction_expr in self.reaction_expressions.items():
-                        if(self.chem.reactions[reaction_number]["type"] == rtype):
-                            if(self.omp):
-                                if(rnum == 0):
-                                    f.write(omp_startdo+"\n")
-                                    f.write(startdo+"\n")
-                                elif(rnum%10 == 0):
-                                    f.write(enddo+"\n")
-                                    f.write(omp_enddo+"\n")
-                                    f.write(omp_startdo+"\n")
-                                    f.write(startdo+"\n")
-                            f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                        if self.chem.reactions[reaction_number]["type"] == rtype:
+                            f.write(f"    # Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                            f.write(self.reaction_expressions[reaction_number])
+                            f.write("\n")
+            else:
+                for reaction_number, reaction_expr in self.reaction_expressions.items():
+                    f.write(f"    # Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                    f.write(self.reaction_expressions[reaction_number])
+                    f.write("\n")
+
+            f.write("    return kf, kb, rr\n")
+
+    def _write_fortran_expressions(self, filename, write_rtypes_together):
+        with open(filename, 'w') as f:
+            self.write_fortran_header(f)
+            
+            f.write("    ! Y to C conversion\n")
+            f.write(self.ytoc_expr)
+            f.write("\n")
+            
+            f.write("    ! Exponential G calculations\n")
+            f.write(self.exp_g_expr)
+            f.write("\n")
+
+            if write_rtypes_together:
+                for rtype in self.chem.reaction_types:
+                    f.write(f"    ! Reaction type: {rtype}\n")
+                    for reaction_number, reaction_expr in self.reaction_expressions.items():
+                        if self.chem.reactions[reaction_number]["type"] == rtype:
+                            f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                            f.write(self.reaction_expressions[reaction_number])
+                            f.write("\n")
+            else:
+                for reaction_number, reaction_expr in self.reaction_expressions.items():
+                    f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                    f.write(self.reaction_expressions[reaction_number])
+                    f.write("\n")
+
+            if self.vec:
+                f.write("end subroutine getrates_i\n")
+            else:
+                f.write("end subroutine getrates\n")
+
+    def _write_omp_expressions(self, filename, write_rtypes_together):
+        thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
+        omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
+        omp_enddo = "!$omp end target teams distribute parallel do"
+        startdo = "    do i = 1,veclen"
+        enddo = "    enddo"
+
+        with open(filename, 'w') as f:
+            f.write("!!NOTE: This subroutine assumes the all the input arrays are already offloaded to GPU\n")
+            self.write_fortran_header(f)
+
+            f.write("!$omp target teams distribute parallel do\n")
+            f.write("   do i=1,veclen\n")
+            f.write(f"       do L=1,{self.chem.n_species_red}\n")
+            f.write("           wdot(i,L) = 0.0d0\n")
+            f.write("       enddo\n")
+            f.write("   enddo\n")
+            f.write("!$omp end target teams distribute parallel do\n")
+            
+            f.write(self.ytoc_expr)
+            f.write("\n")
+            
+            f.write("    ! Exponential G calculations\n")
+            f.write(self.exp_g_expr)
+            f.write("\n")
+
+            rnum = 0
+            if write_rtypes_together:
+                for rtype in self.chem.reaction_types:
+                    f.write(f"    ! Reaction type: {rtype}\n")
+                    for reaction_number, reaction_expr in self.reaction_expressions.items():
+                        if self.chem.reactions[reaction_number]["type"] == rtype:
+                            if rnum == 0:
+                                f.write(omp_startdo+"\n")
+                                f.write(startdo+"\n")
+                            elif rnum%10 == 0:
+                                f.write(enddo+"\n")
+                                f.write(omp_enddo+"\n")
+                                f.write(omp_startdo+"\n")
+                                f.write(startdo+"\n")
+                            f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
                             f.write(self.reaction_expressions[reaction_number])
                             f.write("\n")
                             rnum += 1
             else:
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
-                        if(self.omp):
-                            if(rnum == 0):
+                    if rnum == 0:
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
+                    elif rnum%10 == 0:
+                        f.write(enddo+"\n")
+                        f.write(omp_enddo+"\n")
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
+                    f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                    f.write(self.reaction_expressions[reaction_number])
+                    f.write("\n")
+                    rnum += 1
+
+            f.write(enddo+"\n")
+            f.write(omp_enddo+"\n")
+            f.write("end subroutine getrates_gpu\n")
+
+    def _write_chemgen_mod(self, filename, write_rtypes_together):
+        thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
+        omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
+        omp_enddo = "!$omp end target teams distribute parallel do"
+        startdo = "    do i = 1,veclen"
+        enddo = "    enddo"
+
+        with open(filename, 'w') as f:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+            template = env.get_template('chemgen_mod.j2')
+            context = {
+                'n_species_red': self.chem.n_species_red,
+                'n_species_sk': self.chem.n_species_sk,
+            }
+            rendered = template.render(**context)
+            f.write(rendered.lstrip())
+            f.write("\n")
+            self.write_fortran_header(f)
+
+            f.write("!$omp target teams distribute parallel do\n")
+            f.write("   do i=1,veclen\n")
+            f.write(f"       do L=1,{self.chem.n_species_red}\n")
+            f.write("           wdot(i,L) = 0.0d0\n")
+            f.write("       enddo\n")
+            f.write("   enddo\n")
+            f.write("!$omp end target teams distribute parallel do\n")
+        
+            f.write(self.ytoc_expr)
+            f.write("\n")
+            
+            f.write("    ! Exponential G calculations\n")
+            f.write(self.exp_g_expr)
+            f.write("\n")
+
+            rnum = 0
+            if write_rtypes_together:
+                for rtype in self.chem.reaction_types:
+                    f.write(f"    ! Reaction type: {rtype}\n")
+                    for reaction_number, reaction_expr in self.reaction_expressions.items():
+                        if self.chem.reactions[reaction_number]["type"] == rtype:
+                            if rnum == 0:
                                 f.write(omp_startdo+"\n")
                                 f.write(startdo+"\n")
-                            elif(rnum%10 == 0):
+                            elif rnum%10 == 0:
                                 f.write(enddo+"\n")
                                 f.write(omp_enddo+"\n")
                                 f.write(omp_startdo+"\n")
                                 f.write(startdo+"\n")
-                        f.write(f"    {'#' if self.language == 'python' else '!'} Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
-                        f.write(self.reaction_expressions[reaction_number])
-                        f.write("\n")
-                        rnum += 1
+                            f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                            f.write(self.reaction_expressions[reaction_number])
+                            f.write("\n")
+                            rnum += 1
+            else:
+                for reaction_number, reaction_expr in self.reaction_expressions.items():
+                    if rnum == 0:
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
+                    elif rnum%10 == 0:
+                        f.write(enddo+"\n")
+                        f.write(omp_enddo+"\n")
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
+                    f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
+                    f.write(self.reaction_expressions[reaction_number])
+                    f.write("\n")
+                    rnum += 1
 
-            if(self.omp):
-                f.write(enddo+"\n")
-                f.write(omp_enddo+"\n")
-                f.write("!$omp end target data\n")
-                f.write("!$omp target exit data map(delete:C,ctot,EG)\n")
-
-            if self.language == 'python':
-                f.write("    return kf, kb, rr\n")
-            else:  # Fortran
-                if self.omp:
-                    f.write("end subroutine getrates_gpu\n")
-                elif self.vec:
-                    f.write("end subroutine getrates_i\n")
-                else:
-                    f.write("end subroutine getrates\n")
-
-        print(f"Expressions and getrates function written to {filename}")
+            f.write(enddo+"\n")
+            f.write(omp_enddo+"\n")
+            f.write("end subroutine getrates_omp_gpu\n")
+            f.write("end module chemgen_m\n")
+            f.write("#endif\n")
 
 
     def write_python_header(self, f):
-        f.write("import numpy as np\n\n")
-        if self.vec:
-            f.write("def getrates(veclen, T, Y, P, wdot):\n")
-            f.write(f"    C = np.zeros((veclen, {self.chem.n_species_red}))\n")
-            f.write(f"    EG = np.zeros((veclen, {self.chem.n_species_sk}))\n")
-            f.write("    kf = np.zeros(veclen)\n")
-            f.write("    kb = np.zeros(veclen)\n")
-            f.write(f"    rr = np.zeros(veclen)\n")
-            f.write(f"    ctot = np.zeros(veclen)\n")
-            f.write(f"    M = np.zeros(veclen)\n")
-            # Add intermediate variables for troe and plog reactions
-            f.write("    k0 = np.zeros(veclen)\n")
-            f.write("    kinf = np.zeros(veclen)\n")
-            f.write("    Pr = np.zeros(veclen)\n")
-            f.write("    Fcent = np.zeros(veclen)\n")
-            f.write("    C1 = np.zeros(veclen)\n")
-            f.write("    N = np.zeros(veclen)\n")
-            f.write("    F1 = np.zeros(veclen)\n")
-            f.write("    F = np.zeros(veclen)\n")
-            f.write("    logPr = np.zeros(veclen)\n")
-            f.write("    logFcent = np.zeros(veclen)\n")
-            f.write("    smh = np.zeros(veclen)\n")
-            f.write("    wdot[:,:] = 0.0\n")
-        else:
-            f.write("def getrates(T, Y, P, wdot):\n")
-            f.write(f"    C = np.zeros({self.chem.n_species_red})\n")
-            f.write(f"    EG = np.zeros({self.chem.n_species_sk})\n")
-            f.write("    kf = 0.0\n")
-            f.write("    kb = 0.0\n")
-            f.write("    rr = 0.0\n")
-            f.write("    ctot = 0.0\n")
-            f.write("    M = 0.0\n")
-            # Add intermediate variables for troe and plog reactions
-            f.write("    k0 = 0.0\n")
-            f.write("    kinf = 0.0\n")
-            f.write("    Pr = 0.0\n")
-            f.write("    Fcent = 0.0\n")
-            f.write("    C1 = 0.0\n")
-            f.write("    N = 0.0\n")
-            f.write("    F1 = 0.0\n")
-            f.write("    F = 0.0\n")
-            f.write("    logPr = 0.0\n")
-            f.write("    logFcent = 0.0\n")
-            f.write("    smh = 0.0\n")
-            f.write("    wdot[:] = 0.0\n")
-        f.write(f"    Rc = {self.Rc}\n")
-        f.write(f"    R0 = {self.R0}\n")
-        f.write(f"    Patm = {self.Patm}\n")
-        f.write("    kfl = 0.0\n")
-        f.write("    kfh = 0.0\n")
-        f.write("    kbl = 0.0\n")
-        f.write("    logPl = 0.0\n")
-        f.write("    logPh = 0.0\n")
-        f.write("\n")
-        f.write(f"    pfac = Patm/(R0*T)\n")
-        
-        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        template = env.get_template('python_header.j2')
+        context = {
+            'subroutine_name': 'getrates_i' if self.vec else ('getrates_omp_gpu' if self.omp and self.mod else 'getrates_gpu' if self.omp else 'getrates'),
+            'vec': self.vec,
+            'omp': self.omp,
+            'mod': self.mod,
+            'n_species_red': self.chem.n_species_red,
+            'n_species_sk': self.chem.n_species_sk,
+            'Rc': self.Rc,
+            'R0': self.R0,
+            'Patm': self.Patm
+        }
 
+        rendered = template.render(**context)
+        f.write(rendered.lstrip())
+        f.write("\n")
+        
+        
     def write_fortran_header(self, f):
-        if self.vec:
-            f.write("subroutine getrates_i(P, T, veclen, Y, ickwrk, rckwrk, wdot)\n")
-            f.write("    implicit none\n")
-            f.write("    integer, intent(in) :: veclen\n")
-            f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(in) :: Y\n")
-            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(out) :: wdot\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}) :: C\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
-            f.write("    real(kind=8), dimension(veclen) :: kf, kb\n")
-            f.write("    real(kind=8), dimension(veclen) :: rr, ctot, pfac\n")
-            f.write("    real(kind=8), dimension(veclen) :: M\n")
-            # Add intermediate variables for troe and plog reactions
-            f.write("    real(kind=8), dimension(veclen) :: k0, kinf, Pr, Fcent\n")
-            f.write("    real(kind=8), dimension(veclen) :: C1, N, F1, F\n")
-            f.write("    real(kind=8), dimension(veclen) :: logPr, logFcent\n")
-            f.write("    real(kind=8) :: smh\n")
-        elif self.omp:
-            f.write("subroutine getrates_gpu(P, T, veclen, Y, ickwrk, rckwrk, wdot)\n")
-            f.write("    implicit none\n")
-            f.write("    integer, intent(in) :: veclen\n")
-            f.write("    real(kind=8), dimension(veclen), intent(in) :: T, P\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(in) :: Y\n")
-            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}), intent(out) :: wdot\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_red}) :: C\n")
-            f.write(f"    real(kind=8), dimension(veclen) :: ctot,pfac\n")
-            f.write(f"    real(kind=8), dimension(veclen, {self.chem.n_species_sk}) :: EG\n")
-            f.write("    real(kind=8) :: kf, kb\n")
-            f.write("    real(kind=8) :: rr\n")
-            f.write("    real(kind=8) :: M\n")
-            f.write("    real(kind=8) :: k0, kinf, Pr, Fcent\n")
-            f.write("    real(kind=8) :: C1, N, F1, F\n")
-            f.write("    real(kind=8) :: logPr, logFcent\n")
-            f.write("    real(kind=8) :: smh\n")
-        else:
-            f.write("subroutine getrates(P, T, Y, ickwrk, rckwrk, wdot)\n")
-            f.write("    implicit none\n")
-            f.write("    real(kind=8), intent(in) :: T, P\n")
-            f.write(f"    real(kind=8), dimension({self.chem.n_species_red}), intent(in) :: Y\n")
-            f.write(f"    real(kind=8), intent(in) :: ickwrk(*),rckwrk(*)\n")
-            f.write(f"    real(kind=8), dimension({self.chem.n_species_red}), intent(out) :: wdot\n")
-            f.write(f"    real(kind=8), dimension({self.chem.n_species_red}) :: C\n")
-            f.write(f"    real(kind=8), dimension({self.chem.n_species_sk}) :: EG\n")
-            
-            f.write("    real(kind=8) :: kf, kb\n")
-            f.write("    real(kind=8) :: rr, ctot, pfac\n")
-            f.write("    real(kind=8) :: M, smh\n")
-            # Add intermediate variables for troe and plog reactions
-            f.write("    real(kind=8) :: k0, kinf, Pr, Fcent\n")
-            f.write("    real(kind=8) :: C1, N, F1, F\n")
-            f.write("    real(kind=8) :: logPr, logFcent\n")
-        f.write(f"    real(kind=8), parameter :: Rc = {self.Rc}D0\n")
-        f.write(f"    real(kind=8), parameter :: R0 = {self.R0}D0\n")
-        f.write(f"    real(kind=8), parameter :: Patm = {self.Patm}D0\n")
-        f.write("    real(kind=8) :: kfl, kfh, kbl, logPl, logPh\n")
-        f.write("    integer :: i,L\n")
-        f.write("\n")
-        f.write("    pfac = Patm / (R0 * T)\n")
-        f.write("    wdot = 0.0d0\n")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        template = env.get_template('ftn_header.j2')
+        context = {
+            'subroutine_name': 'getrates_i' if self.vec else ('getrates_omp_gpu' if self.omp and self.mod else 'getrates_gpu' if self.omp else 'getrates'),
+            'vec': self.vec,
+            'omp': self.omp,
+            'mod': self.mod,
+            'n_species_red': self.chem.n_species_red,
+            'n_species_sk': self.chem.n_species_sk,
+            'Rc': self.Rc,
+            'R0': self.R0,
+            'Patm': self.Patm
+        }
 
+        rendered = template.render(**context)
+        f.write(rendered.lstrip())
+        f.write("\n")
+
+            
+def write_chemistry_mini_app(chem,dirname,ng,ncpu=64,ngpu=8,nt=100):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname,exist_ok=True)
+    filename = os.path.join(dirname,"main.f90")
+    with open(filename,'w') as f:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        template = env.get_template('chemistry_mini_app.j2')
+        context = {
+                "ng":ng,
+                "ncpu":ncpu,
+                "ngpu":ngpu,
+                "nt":nt,
+                'n_species_red': chem.n_species_red,
+                'n_species_sk': chem.n_species_sk,
+        }
+        rendered = template.render(**context)
+        f.write(rendered.lstrip())
+        f.write("\n")
+    ##write omp gpu
+    chem_expr = chemistry_expressions(chem,omp=True,language="fortran",mod=False)
+    filename = os.path.join(dirname,"getrates_gpu.f90")
+    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
+
+    ##write scalar f90
+    chem_expr =chemistry_expressions(chem,omp=False,vec=False,language="fortran")
+    filename = os.path.join(dirname,f"getrates.f90")
+    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
+    #write vector f90
+    chem_expr =chemistry_expressions(chem,omp=False,vec=True,language="fortran")
+    filename = os.path.join(dirname,f"getrates_i.f90")
+    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
 
 
 ##TODO:add these after implementing automatic qssa identification

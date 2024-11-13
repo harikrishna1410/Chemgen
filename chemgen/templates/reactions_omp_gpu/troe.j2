@@ -39,7 +39,7 @@
     kf = kinf * (Pr / (1.0D0 + Pr)) * F
 
 {% if reaction['reversible'] %}
-    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac(i)**({{ coeff_sum }}) {% endif %}
+    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / (Patm / (R0 * T(i)))**({{ coeff_sum }}) {% endif %}
 {% else %}
     kb = 0.0D0
 {% endif %}

@@ -44,7 +44,7 @@
 {% if coeff_sum == 0 %}
     kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %}
 {% else %}
-    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / pfac(i)**({{ coeff_sum }}) 
+    kb = kf{% for sp, coeff in reaction["reacts"].items() %} * EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**{{coeff}}{% endif %}{% endfor %}{% for sp, coeff in reaction["prods"].items() %} / EG(i,{{stoi[sp]+1}}){% if coeff != 1.0 %}**({{coeff}}){% endif %} {% endfor %} {% if coeff_sum != 0.0 %} / (Patm / (R0 * T(i)))**({{ coeff_sum }}) 
 {% endif %}
 {% endif %}
 {% else %}

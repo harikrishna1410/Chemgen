@@ -1,9 +1,9 @@
 import numpy as np
 import cantera as ct
-from getrates import getrates as getrates_python
-from getrates_i import getrates as getrates_python_vec
-from getrates_ftn_module import getrates as getrates_ftn
-from getrates_ftn_module_vec import getrates as getrates_ftn_vec
+from getrates_H2_burke_new import getrates as getrates_python
+from getrates_i_H2_burke_new import getrates_i as getrates_python_vec
+# from getrates_ftn_module import getrates as getrates_ftn
+# from getrates_ftn_module_vec import getrates as getrates_ftn_vec
 
 # Set up initial conditions
 phi = 1.0
@@ -67,8 +67,8 @@ getrates_python_vec(veclen,T_array, Y_array, P_array , wdot_python_vec)
 
 custom_wdot.append(wdot_python)
 custom_wdot.append(wdot_python_vec[0])
-custom_wdot.append(wdot_ftn)
-custom_wdot.append(wdot_ftn_vec[0])
+# custom_wdot.append(wdot_ftn)
+# custom_wdot.append(wdot_ftn_vec[0])
 
 
 # Compare species production rates
