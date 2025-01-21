@@ -334,7 +334,7 @@ class chemistry_expressions:
                 else:
                     self._write_omp_expressions(filename, write_rtypes_together) 
             else:
-                self._write_fortran_expressions(filename, write_rtypes_together)
+                self._write_fortran_expressions(filename, write_rtypes_together,input_MW)
         print(f"Expressions and getrates function written to {filename}")
 
     def _write_python_expressions(self, filename, write_rtypes_together):
@@ -365,9 +365,9 @@ class chemistry_expressions:
 
             f.write("    return kf, kb, rr\n")
 
-    def _write_fortran_expressions(self, filename, write_rtypes_together):
+    def _write_fortran_expressions(self, filename, write_rtypes_together,input_MW):
         with open(filename, 'w') as f:
-            self.write_fortran_header(f)
+            self.write_fortran_header(f,input_MW=input_MW)
             
             f.write("    ! Y to C conversion\n")
             f.write(self.ytoc_expr)
