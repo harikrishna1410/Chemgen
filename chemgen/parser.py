@@ -1,7 +1,7 @@
 import re
 import sys
 import numpy as np
-import torch
+#import torch
 import sympy as sp
 import cantera as ct
 import os
