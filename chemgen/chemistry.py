@@ -198,7 +198,7 @@ class chemistry_expressions:
         if(self.omp and self.language == "python"):
             raise ValueError("omp only works with fortran")
         
-        self.Rc = 1.987215575926745  # cal/(mol·K)
+        self.Rc = 1.9872155832  # cal/(mol·K)
         self.R0 = 8.314510e+07
         self.Patm = 1013250.0
 
