@@ -3,7 +3,7 @@
 !$omp target teams distribute parallel do 
 do i = 1, veclen
 {% for sp_idx in range(chem["nspecies"]) %}
-    C(i,{{sp_idx+1}}) = Y(i,{{sp_idx+1}}) / {{"%.15e"|format(chem["mw"][sp_idx])|replace("e","D")}}
+    C(i,{{sp_idx+1}}) = Y(i,{{sp_idx+1}}) {% if input_MW %}/ MW({{sp_idx+1}}) {% else %}/ {{"%.15e"|format(chem["mw"][sp_idx])|replace("e","D")}} {% endif %}
 {% endfor %}
 
     ctot(i) = 0.0D0

@@ -1,6 +1,7 @@
-subroutine {{ subroutine_name }}(P, T{% if vec or omp %}, veclen{% endif %}, Y, wdot{% if omp and not mod %}, C, EG, CTOT{% endif %})
+subroutine {{ subroutine_name }}(P, T{% if vec or omp %}, veclen{% endif %}, Y, {% if input_MW %} MW, {% endif %}wdot{% if omp and not mod %}, C, EG, CTOT{% endif %})
     implicit none
     {% if vec or omp %}integer, intent(in) :: veclen{% endif %}
+    {% if input_MW %}real(kind=8), dimension({{ n_species_red }}), intent(in) :: MW{% endif %}
     {% if vec or omp %}real(kind=8), dimension(veclen), intent(in) :: T, P
     real(kind=8), dimension(veclen, {{ n_species_red }}), intent(in) :: Y
     real(kind=8), dimension(veclen, {{ n_species_red }}), intent(out) :: wdot{% else %}

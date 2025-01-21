@@ -166,7 +166,7 @@ class chemistry:
         if reaction_type == "troe":
             dummy_reaction["troe"] = {
                 "low": (1.0, 0.0, 0.0),
-                "troe": (0.0, 0.0, 0.0)
+                "troe": (1.0, 1.0, 1e30)
             }
         elif reaction_type == "third_body":
             dummy_reaction["third_body"] = {first_species: 0.0}
@@ -197,15 +197,15 @@ class chemistry_expressions:
         
         if(self.omp and self.language == "python"):
             raise ValueError("omp only works with fortran")
-        self.create_expressions()
+        
         self.Rc = 1.987215575926745  # cal/(mol·K)
         self.R0 = 8.314510e+07
         self.Patm = 1013250.0
 
-    def create_expressions(self):
+    def create_expressions(self,input_MW):
         for reaction_number, reaction in self.chem.reactions.items():
             self.reaction_expressions[reaction_number] = self.create_reaction_expression(reaction_number, reaction)
-        self.create_ytoc_expr()
+        self.create_ytoc_expr(input_MW)
         self.create_exp_g_expr()
 
     def create_exp_g_expr(self):
@@ -233,7 +233,7 @@ class chemistry_expressions:
         rendered_string = template.render(context)
         self.exp_g_expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
 
-    def create_ytoc_expr(self):
+    def create_ytoc_expr(self,input_MW):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
         if self.language == "python":
@@ -257,7 +257,8 @@ class chemistry_expressions:
                 "mw": [self.chem.species_dict[sp].molecular_weight for sp in self.chem.reduced_species],
                 "has_third_body_reactions": any(r["type"] == "third_body" for r in self.chem.reactions.values()),
                 "has_troe_reactions": any(r["type"] == "troe" for r in self.chem.reactions.values())
-            }
+            },
+            "input_MW": input_MW
         }
         rendered_string = template.render(context)
         self.ytoc_expr = '\n'.join('    ' + line if not line.strip().startswith('!$') else line for line in rendered_string.split('\n') if line.strip())
@@ -316,13 +317,20 @@ class chemistry_expressions:
         expr = '\n'.join('    ' + line.rstrip() if not line.strip().startswith('!$') else line.rstrip() for line in rendered_string.split('\n') if line.strip())
         return expr
 
-    def write_expressions_to_file(self, filename, write_rtypes_together=False):
+    #write the expressions to a file
+    #write_rtogther: if true, write all reactions of a type together
+    #input_MW: if true, the subroutine will take MW as input
+    def write_expressions_to_file(self, 
+                                  filename, 
+                                  write_rtypes_together=False,
+                                  input_MW=False):
+        self.create_expressions(input_MW)
         if self.language == 'python':
             self._write_python_expressions(filename, write_rtypes_together)
         elif self.language == 'fortran':
             if self.omp:
                 if self.mod:
-                    self._write_chemgen_mod(filename, write_rtypes_together)
+                    self._write_chemgen_mod(filename, write_rtypes_together,input_MW)
                 else:
                     self._write_omp_expressions(filename, write_rtypes_together) 
             else:
@@ -451,25 +459,110 @@ class chemistry_expressions:
             f.write(omp_enddo+"\n")
             f.write("end subroutine getrates_gpu\n")
 
-    def _write_chemgen_mod(self, filename, write_rtypes_together):
+    def _write_chemgen_mod(self, filename, write_rtypes_together,input_MW):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+        template = env.get_template('chemgen_mod.j2')
+        
+        # Common arrays for all versions
+        common_arrays = [
+            {"name": "mw_h", "dtype": "real(c_double)"},
+            {"name": "smh_coef_h", "dtype": "real(c_double)"},
+            {"name": "T_mid_h", "dtype": "real(c_double)"}
+        ]
+
+        # Standard reaction arrays
+        standard_arrays = [
+            {"name": "A_h", "dtype": "real(c_double)"},
+            {"name": "B_h", "dtype": "real(c_double)"},
+            {"name": "sk_map_h", "dtype": "integer(c_int)"},
+            {"name": "sk_coef_h", "dtype": "real(c_double)"},
+            {"name": "map_r_h", "dtype": "integer(c_int)"},
+            {"name": "coef_r_h", "dtype": "real(c_double)"},
+            {"name": "map_p_h", "dtype": "integer(c_int)"},
+            {"name": "coef_p_h", "dtype": "real(c_double)"}
+        ]
+
+        # Troe reaction arrays
+        troe_arrays = [
+            {"name": "A_0_troe_h", "dtype": "real(c_double)"},
+            {"name": "B_0_troe_h", "dtype": "real(c_double)"},
+            {"name": "A_inf_troe_h", "dtype": "real(c_double)"},
+            {"name": "B_inf_troe_h", "dtype": "real(c_double)"},
+            {"name": "sk_map_troe_h", "dtype": "integer(c_int)"},
+            {"name": "sk_coef_troe_h", "dtype": "real(c_double)"},
+            {"name": "map_r_troe_h", "dtype": "integer(c_int)"},
+            {"name": "coef_r_troe_h", "dtype": "real(c_double)"},
+            {"name": "map_p_troe_h", "dtype": "integer(c_int)"},
+            {"name": "coef_p_troe_h", "dtype": "real(c_double)"},
+            {"name": "eff_fac_troe_h", "dtype": "real(c_double)"},
+            {"name": "fcent_coef_troe_h", "dtype": "real(c_double)"}
+        ]
+
+        # Third body reaction arrays
+        third_body_arrays = [
+            {"name": "A_third_h", "dtype": "real(c_double)"},
+            {"name": "B_third_h", "dtype": "real(c_double)"},
+            {"name": "sk_map_third_h", "dtype": "integer(c_int)"},
+            {"name": "sk_coef_third_h", "dtype": "real(c_double)"},
+            {"name": "map_r_third_h", "dtype": "integer(c_int)"},
+            {"name": "coef_r_third_h", "dtype": "real(c_double)"},
+            {"name": "map_p_third_h", "dtype": "integer(c_int)"},
+            {"name": "coef_p_third_h", "dtype": "real(c_double)"},
+            {"name": "eff_fac_third_h", "dtype": "real(c_double)"}
+        ]
+
+        # PLOG reaction arrays
+        plog_arrays = [
+            {"name": "A_plog_h", "dtype": "real(c_double)"},
+            {"name": "B_plog_h", "dtype": "real(c_double)"},
+            {"name": "sk_map_plog_h", "dtype": "integer(c_int)"},
+            {"name": "sk_coef_plog_h", "dtype": "real(c_double)"},
+            {"name": "map_r_plog_h", "dtype": "integer(c_int)"},
+            {"name": "coef_r_plog_h", "dtype": "real(c_double)"},
+            {"name": "map_p_plog_h", "dtype": "integer(c_int)"},
+            {"name": "coef_p_plog_h", "dtype": "real(c_double)"}
+        ]
+
+        # Build cp_const_vars list based on which reaction types exist
+        cp_const_vars = common_arrays.copy()
+        if len(self.chem.get_reactions_by_type("standard")) > 0:
+            cp_const_vars.extend(standard_arrays)
+        if len(self.chem.get_reactions_by_type("troe")) > 0:
+            cp_const_vars.extend(troe_arrays)
+        if len(self.chem.get_reactions_by_type("third_body")) > 0:
+            cp_const_vars.extend(third_body_arrays)
+        if len(self.chem.get_reactions_by_type("plog")) > 0:
+            cp_const_vars.extend(plog_arrays)
+
+        # For V4 version: filter out map arrays and add wdot coefficients
+        cp_const_vars_v4 = [var for var in cp_const_vars if not "map" in var["name"]]
+        
+        # Add wdot coefficient arrays for V4
+        aname = {"standard":"","troe":"_troe","third_body":"_third","plog":"_plog"}
+        for rtype in ["standard", "troe", "third_body", "plog"]:
+            if len(self.chem.get_reactions_by_type(rtype)) > 0:
+                cp_const_vars_v4.append({"name": f"wdot_coef{aname[rtype]}_h", "dtype": "real(c_double)"})
+
+        context = {
+            'n_species_red': self.chem.n_species_red,
+            'n_species_sk': self.chem.n_species_sk,
+            'cp_const_vars': cp_const_vars,
+            'cp_const_vars_v4': cp_const_vars_v4,
+            'input_MW': input_MW
+        }
+
+        rendered = template.render(**context)
         thread_private = "private(kf,kb,rr,M,k0,kinf,Pr,Fcent,C1,N,F1,F,logPr,logFcent,smh,kfl,kfh,kbl,logPl,logPh,i,L)"
         omp_startdo = f"!$omp target teams distribute parallel do {thread_private}"
         omp_enddo = "!$omp end target teams distribute parallel do"
         startdo = "    do i = 1,veclen"
         enddo = "    enddo"
-
         with open(filename, 'w') as f:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
-            template = env.get_template('chemgen_mod.j2')
-            context = {
-                'n_species_red': self.chem.n_species_red,
-                'n_species_sk': self.chem.n_species_sk,
-            }
-            rendered = template.render(**context)
             f.write(rendered.lstrip())
             f.write("\n")
-            self.write_fortran_header(f)
+            f.write("!!NOTE: This subroutine assumes the all the input arrays are already offloaded to GPU\n")
+            self.write_fortran_header(f,input_MW=input_MW)
 
             f.write("!$omp target teams distribute parallel do\n")
             f.write("   do i=1,veclen\n")
@@ -478,7 +571,7 @@ class chemistry_expressions:
             f.write("       enddo\n")
             f.write("   enddo\n")
             f.write("!$omp end target teams distribute parallel do\n")
-        
+            
             f.write(self.ytoc_expr)
             f.write("\n")
             
@@ -522,9 +615,9 @@ class chemistry_expressions:
             f.write(enddo+"\n")
             f.write(omp_enddo+"\n")
             f.write("end subroutine getrates_omp_gpu\n")
-            f.write("end module chemgen_m\n")
+            f.write("end module\n")
             f.write("#endif\n")
-
+            
 
     def write_python_header(self, f):
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -547,7 +640,7 @@ class chemistry_expressions:
         f.write("\n")
         
         
-    def write_fortran_header(self, f):
+    def write_fortran_header(self, f, input_MW=False):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
         template = env.get_template('ftn_header.j2')
@@ -560,7 +653,8 @@ class chemistry_expressions:
             'n_species_sk': self.chem.n_species_sk,
             'Rc': self.Rc,
             'R0': self.R0,
-            'Patm': self.Patm
+            'Patm': self.Patm,
+            'input_MW': input_MW
         }
 
         rendered = template.render(**context)

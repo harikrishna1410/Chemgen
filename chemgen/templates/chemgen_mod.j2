@@ -5,6 +5,15 @@
 !!Hari: this is wrapper for all types of gpu chemistries omp, HIP various levels of parallelism, rocBLAS.
 !!Auto generated
 module chemgen_m
+#ifdef HIP_CHEM_V4
+use coef_m_v4
+#elif HIP_CHEM_V3
+use coef_m_v3
+#elif HIP_CHEM_V2
+use coef_m_v2
+#elif HIP_CHEM_V1
+use coef_m_v1
+#endif
 implicit none
 private
 !!this is the intermediate array needed in chemistry computation
@@ -13,6 +22,86 @@ real,allocatable, dimension(:) :: CTOT
 
 public :: init_chemgen
 public :: getrates_gpu
+
+interface
+#ifdef HIP_CHEM_V4
+!rocblas implementation
+subroutine getrates_hip_wrapper_v4(P, T, ng, Y, wdot, logEG,logC) bind(C, name="getrates_hip_wrapper_v4")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    real(c_double), intent(in) :: P(*)
+    real(c_double), intent(in) :: Te(*)
+    integer(c_int), value, intent(in) :: ng
+    real(c_double), intent(in) :: Y(*)
+    real(c_double), intent(out) :: wdot(*)
+    real(c_double), intent(in) :: logEG(*)
+    real(c_double), intent(in) :: logC(*)
+end subroutine getrates_hip_wrapper_v4
+#elif HIP_CHEM_V3
+!third level of parallelisation
+subroutine getrates_hip_wrapper_v3(P, T, ng, Y, wdot, logEG,logC) bind(C, name="getrates_hip_wrapper_v3")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    real(c_double), intent(in) :: P(*)
+    real(c_double), intent(in) :: T(*)
+    integer(c_int), value, intent(in) :: ng
+    real(c_double), intent(in) :: Y(*)
+    real(c_double), intent(out) :: wdot(*)
+    real(c_double), intent(in) :: logEG(*)
+    real(c_double), intent(in) :: logC(*)
+end subroutine getrates_hip_wrapper_v3
+#elif HIP_CHEM_V2
+!second level of parallelisation
+subroutine getrates_hip_wrapper_v2(P, T, ng, Y, wdot, logEG, logC) bind(C, name="getrates_hip_wrapper_v2")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    real(c_double), intent(in) :: P(*)
+    real(c_double), intent(in) :: T(*)
+    integer(c_int), value, intent(in) :: ng
+    real(c_double), intent(in) :: Y(*)
+    real(c_double), intent(out) :: wdot(*)
+    real(c_double), intent(in) :: logEG(*)
+    real(c_double), intent(in) :: logC(*)
+end subroutine getrates_hip_wrapper_v2
+#elif HIP_CHEM_V1
+!first level of parallelisation
+subroutine getrates_hip_wrapper_v1(P, T, ng, Y, wdot, logEG, logC) bind(C, name="getrates_hip_wrapper_v1")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    real(c_double), intent(in) :: P(*)
+    real(c_double), intent(in) :: T(*)
+    integer(c_int), value, intent(in) :: ng
+    real(c_double), intent(in) :: Y(*)
+    real(c_double), intent(out) :: wdot(*)
+    real(c_double), intent(in) :: logEG(*)
+    real(c_double), intent(in) :: logC(*)
+end subroutine getrates_hip_wrapper_v1
+#endif
+
+#if defined(HIP_CHEM_V3) || defined(HIP_CHEM_V2) || defined(HIP_CHEM_V1)
+subroutine copyConstantsToDevice({% for arg in cp_const_vars %}{{ arg.name }}{% if not loop.last %}, &
+                                {% endif %}{% endfor %}) bind(C, name="copyConstantsToDevice")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    {% for arg in cp_const_vars %}{{ arg.dtype }}, intent(in) :: {{ arg.name }}(*)
+    {% endfor %}
+    end subroutine copyConstantsToDevice
+#elif HIP_CHEM_V4
+subroutine copyConstantsToDevice({% for arg in cp_const_vars_v4 %}{{ arg.name }}{% if not loop.last %}, &
+                                {% endif %}{% endfor %}) bind(C, name="copyConstantsToDevice")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    {% for arg in cp_const_vars_v4 %}{{ arg.dtype }}, intent(in) :: {{ arg.name }}(*)
+    {% endfor %}
+end subroutine copyConstantsToDevice
+
+subroutine allocate_intermediate_DeviceMemory(ng) bind(C,name="allocate_intermediate_DeviceMemory")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer(c_int), value, intent(in) :: ng
+end subroutine allocate_intermediate_DeviceMemory
+#endif
+end interface
 contains
 !***************************************************************
 !!this allocates and pushes the intermediate arrays needed in chemistry to the device
@@ -25,6 +114,14 @@ subroutine init_chemgen(flag,ng)
         allocate(C(ng,{{ n_species_red }}))
         allocate(CTOT(ng))
 !$omp target enter data map(to:EG,C,CTOT)
+#if defined(HIP_CHEM_V3) || defined(HIP_CHEM_V2) || defined(HIP_CHEM_V1)
+        call copyConstantsToDevice({% for arg in cp_const_vars %}{{ arg.name }}{% if not loop.last %}, &
+                                    {% endif %}{% endfor %})
+#elif HIP_CHEM_V4
+        call copyConstantsToDevice({% for arg in cp_const_vars_v4 %}{{ arg.name }}{% if not loop.last %}, &
+                                    {% endif %}{% endfor %})
+        call allocate_intermediate_DeviceMemory(ng)
+#endif
     else
 !$omp target exit data map(delete:EG,C,CTOT)
         deallocate(EG)
@@ -33,17 +130,24 @@ subroutine init_chemgen(flag,ng)
     endif
 end subroutine
 !***************************************************************
-subroutine getrates_gpu(P, T, ng, Y, ickwrk, rckwrk, wdot)
+subroutine getrates_gpu(P, T, ng, Y, {% if input_MW %} MW , {% endif %} wdot)
     implicit none
     integer, intent(in) :: ng
     real(kind=8), dimension(ng), intent(in) :: T, P
     real(kind=8), dimension(ng, {{ n_species_red }}), intent(in) :: Y
-    integer, intent(in) :: ickwrk(*)
-    real(kind=8), intent(in) :: rckwrk(*)
+    {% if input_MW %}real(kind=8), dimension({{ n_species_red }}), intent(in) :: MW{% endif %}
     real(kind=8), dimension(ng, {{ n_species_red }}), intent(out) :: wdot
 
 #ifdef OMP_CHEM
-    call getrates_omp_gpu(P, T, ng, Y, wdot)
+    call getrates_omp_gpu(P, T, ng, Y, {% if input_MW %} MW, {% endif %}wdot)
+#elif HIP_CHEM_V1
+    call getrates_hip_wrapper_v1(P, T, ng, Y, wdot, EG, C)
+#elif HIP_CHEM_V2
+    call getrates_hip_wrapper_v2(P, T, ng, Y, wdot, EG, C)
+#elif HIP_CHEM_V3
+    call getrates_hip_wrapper_v3(P, T, ng, Y, wdot, EG, C)
+#elif HIP_CHEM_V4
+    call getrates_hip_wrapper_v4(P, T, ng, Y, wdot, EG, C)
 #endif
 end subroutine
 !***************************************************************
