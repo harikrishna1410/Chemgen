@@ -45,15 +45,13 @@ def generate_gpu_coefficients(args):
     ckp = ckparser()
     chem = chemistry(args.mech, ckp, therm_file=args.therm)
     
-    output_dir = os.path.dirname(args.output) if os.path.dirname(args.output) else '.'
-    
     # Generate coefficient module
-    write_coef_module(output_dir, chem, 
+    write_coef_module(args.output, chem, 
                      parallel_level=args.parallel_level,
                      nreact_per_block=args.nreact_per_block)
     
     # Generate constants header
-    write_constants_header(output_dir, chem,
+    write_constants_header(args.output, chem,
                          parallel_level=args.parallel_level,
                          veclen=args.veclen,
                          nreact_per_block=args.nreact_per_block)

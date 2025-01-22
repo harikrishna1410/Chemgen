@@ -105,10 +105,14 @@ end interface
 contains
 !***************************************************************
 !!this allocates and pushes the intermediate arrays needed in chemistry to the device
-subroutine init_chemgen(flag,ng)
+subroutine init_chemgen(flag,ng,mw_h)
     implicit none
     integer,intent(in) :: flag
     integer,intent(in) :: ng
+!!NOTE: there is also mw_h in coef_v<parallel_level> modules. 
+!!However, due to the differences between the interpreters this can be 
+!!different from the molecular weights used in different parts of the solver.
+    real(kind=8),intent(in) :: mw_h({{ n_species_red }})
     if(flag .eq. 1)then
         allocate(EG(ng,{{ n_species_sk }}))
         allocate(C(ng,{{ n_species_red }}))
