@@ -143,13 +143,21 @@ subroutine getrates_gpu(P, T, ng, Y, {% if input_MW %} MW , {% endif %} wdot)
     real(kind=8), dimension(ng, {{ n_species_red }}), intent(out) :: wdot
 
 #if HIP_CHEM_v1
+!$omp target data use_device_ptr(P, T, Y, wdot, EG, C)
     call getrates_hip_wrapper_v1(P, T, ng, Y, wdot, EG, C)
+!$omp end target data
 #elif HIP_CHEM_v2
+!$omp target data use_device_ptr(P, T, Y, wdot, EG, C)
     call getrates_hip_wrapper_v2(P, T, ng, Y, wdot, EG, C)
+!$omp end target data
 #elif HIP_CHEM_v3
+!$omp target data use_device_ptr(P, T, Y, wdot, EG, C)
     call getrates_hip_wrapper_v3(P, T, ng, Y, wdot, EG, C)
+!$omp end target data
 #elif HIP_CHEM_v4
+!$omp target data use_device_ptr(P, T, Y, wdot, EG, C)
     call getrates_hip_wrapper_v4(P, T, ng, Y, wdot, EG, C)
+!$omp end target data
 #else
     call getrates_omp_gpu(P, T, ng, Y, {% if input_MW %} MW, {% endif %}wdot)
 #endif
