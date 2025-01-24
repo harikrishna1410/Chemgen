@@ -9,7 +9,7 @@ import sys
 import numpy as np
 
 space = " "
-R_c = 1.987215575926745  # cal/mol/K
+R_c = 1.9872155832  # cal/mol/K
 
 def get_arh_coef_lines(r_dict, troe=False):
     A_lines, B_lines, nr_calc = [], [], 0

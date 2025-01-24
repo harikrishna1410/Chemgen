@@ -525,7 +525,8 @@ class chemistry_expressions:
         ]
 
         # Build cp_const_vars list based on which reaction types exist
-        cp_const_vars = common_arrays.copy()
+
+        cp_const_vars = []        
         if len(self.chem.get_reactions_by_type("standard")) > 0:
             cp_const_vars.extend(standard_arrays)
         if len(self.chem.get_reactions_by_type("troe")) > 0:
@@ -534,6 +535,7 @@ class chemistry_expressions:
             cp_const_vars.extend(third_body_arrays)
         if len(self.chem.get_reactions_by_type("plog")) > 0:
             cp_const_vars.extend(plog_arrays)
+        cp_const_vars.extend(common_arrays)
 
         # For V4 version: filter out map arrays and add wdot coefficients
         cp_const_vars_v4 = [var for var in cp_const_vars if not "map" in var["name"]]
