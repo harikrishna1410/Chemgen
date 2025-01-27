@@ -523,28 +523,30 @@ class chemistry_expressions:
             {"name": "map_p_plog_h", "dtype": "integer(c_int)"},
             {"name": "coef_p_plog_h", "dtype": "real(c_double)"}
         ]
+        
 
         # Build cp_const_vars list based on which reaction types exist
 
         cp_const_vars = []        
+        cp_const_vars_v4 = []        
         if len(self.chem.get_reactions_by_type("standard")) > 0:
             cp_const_vars.extend(standard_arrays)
+            cp_const_vars_v4.extend(standard_arrays + [{"name": "wdot_coef_h", "dtype": "real(c_double)"}])
         if len(self.chem.get_reactions_by_type("troe")) > 0:
             cp_const_vars.extend(troe_arrays)
+            cp_const_vars_v4.extend(troe_arrays + [{"name": "wdot_coef_troe_h", "dtype": "real(c_double)"}])
         if len(self.chem.get_reactions_by_type("third_body")) > 0:
             cp_const_vars.extend(third_body_arrays)
+            cp_const_vars_v4.extend(third_body_arrays + [{"name": "wdot_coef_third_h", "dtype": "real(c_double)"}])
         if len(self.chem.get_reactions_by_type("plog")) > 0:
             cp_const_vars.extend(plog_arrays)
+            cp_const_vars_v4.extend(plog_arrays + [{"name": "wdot_coef_plog_h", "dtype": "real(c_double)"}])
         cp_const_vars.extend(common_arrays)
+        cp_const_vars_v4.extend(common_arrays)
+        
 
         # For V4 version: filter out map arrays and add wdot coefficients
-        cp_const_vars_v4 = [var for var in cp_const_vars if not "map" in var["name"]]
-        
-        # Add wdot coefficient arrays for V4
-        aname = {"standard":"","troe":"_troe","third_body":"_third","plog":"_plog"}
-        for rtype in ["standard", "troe", "third_body", "plog"]:
-            if len(self.chem.get_reactions_by_type(rtype)) > 0:
-                cp_const_vars_v4.append({"name": f"wdot_coef{aname[rtype]}_h", "dtype": "real(c_double)"})
+        cp_const_vars_v4 = [var for var in cp_const_vars_v4 if not "map" in var["name"]]
 
         context = {
             'n_species_red': self.chem.n_species_red,
