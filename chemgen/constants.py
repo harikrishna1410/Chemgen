@@ -358,9 +358,9 @@ def get_copy_function_rocblas(chem):
             "const double* sk_coef_troe_h,",
             "const double* coef_r_troe_h,",
             "const double* coef_p_troe_h,",
-            "const double* wdot_coef_troe_h,",
             "const double* eff_fac_troe_h,",
-            "const double* fcent_coef_troe_h,"
+            "const double* fcent_coef_troe_h,",
+            "const double* wdot_coef_troe_h,"
         ])
         copies.extend([
             allocate_and_copy_global_array.render(name="A_0_troe", size="NREACT_TROE", dtype="double"),
@@ -382,8 +382,8 @@ def get_copy_function_rocblas(chem):
             "const double* sk_coef_third_h,",
             "const double* coef_r_third_h,",
             "const double* coef_p_third_h,",
-            "const double* wdot_coef_third_h,",
-            "const double* eff_fac_third_h,"
+            "const double* eff_fac_third_h,",
+            "const double* wdot_coef_third_h,"
         ])
         copies.extend([
             allocate_and_copy_global_array.render(name="A_third", size="NREACT_THIRD", dtype="double"),

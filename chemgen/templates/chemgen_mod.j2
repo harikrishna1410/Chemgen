@@ -30,7 +30,7 @@ subroutine getrates_hip_wrapper_v4(P, T, ng, Y, wdot, logEG,logC) bind(C, name="
     use, intrinsic :: iso_c_binding
     implicit none
     real(c_double), intent(in) :: P(*)
-    real(c_double), intent(in) :: Te(*)
+    real(c_double), intent(in) :: T(*)
     integer(c_int), value, intent(in) :: ng
     real(c_double), intent(in) :: Y(*)
     real(c_double), intent(out) :: wdot(*)
