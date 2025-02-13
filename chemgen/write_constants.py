@@ -62,12 +62,12 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
                      "_inf_troe" if reaction_type == "troe" else \
                      "_third" if reaction_type == "third_body" else "_plog"
 
-        new_lines = add_new_array("real", f"A{type_suffix}_h", nr, A_lines, new_lines)
-        new_lines = add_new_array("real", f"B{type_suffix}_h", 2*nr, B_lines, new_lines)
+        new_lines = add_new_array("real(kind=8)", f"A{type_suffix}_h", nr, A_lines, new_lines)
+        new_lines = add_new_array("real(kind=8)", f"B{type_suffix}_h", 2*nr, B_lines, new_lines)
 
         if(reaction_type == "troe"):
-            new_lines = add_new_array("real", f"A_0_troe_h", nr_troe, A0_troe_lines, new_lines)
-            new_lines = add_new_array("real", "B_0_troe_h", 2*nr_troe, B0_troe_lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", f"A_0_troe_h", nr_troe, A0_troe_lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", "B_0_troe_h", 2*nr_troe, B0_troe_lines, new_lines)
 
     return new_lines
 
@@ -83,7 +83,7 @@ def write_molwts(chem: chemistry,parallel_level=1,nreact_per_block=None):
         line = f"{space}{sp.molecular_weight:21.15E},& \n".replace("E", "D")
         mw_lines.append(line)
     mw_lines[-1] = mw_lines[-1][:-4]+"&\n"
-    new_lines = add_new_array("real", "mw_h", chem.n_species_red, mw_lines, new_lines)
+    new_lines = add_new_array("real(kind=8)", "mw_h", chem.n_species_red, mw_lines, new_lines)
     return new_lines
 
 def write_thermo_data(chem: chemistry,parallel_level=1,nreact_per_block=None):
@@ -148,8 +148,8 @@ def write_thermo_data(chem: chemistry,parallel_level=1,nreact_per_block=None):
         thermo_lines.append(line)
     thermo_lines[-1] = thermo_lines[-1][:-4]+"&\n"
     T_mids[-1] = T_mids[-1][:-4]+"&\n"
-    new_lines = add_new_array("real", "T_mid_h", chem.n_species_sk, T_mids, new_lines)
-    new_lines = add_new_array("real", "smh_coef_h", chem.n_species_sk*14, thermo_lines, new_lines)
+    new_lines = add_new_array("real(kind=8)", "T_mid_h", chem.n_species_sk, T_mids, new_lines)
+    new_lines = add_new_array("real(kind=8)", "smh_coef_h", chem.n_species_sk*14, thermo_lines, new_lines)
     return new_lines
 
 def write_maps(chem: chemistry, parallel_level=1, nreact_per_block=None):
@@ -231,7 +231,7 @@ def write_coefficients(chem: chemistry, parallel_level=1, nreact_per_block=None)
                 curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
             if(len(curr_line) > 0):
                 lines.append(curr_line[:-1]+"&\n")
-            new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
 
@@ -268,7 +268,7 @@ def write_third_body_efficiencies(chem: chemistry, parallel_level=1, nreact_per_
             curr_line, lines = append_new_str(f"{c:21.15E},".replace("E","D"), curr_line, lines)
         if(len(curr_line) > 0):
             lines.append(curr_line[:-1]+"&\n")
-        new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+        new_lines = add_new_array("real(kind=8)", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
 
@@ -301,7 +301,7 @@ def write_fcent_coefficients(chem: chemistry, parallel_level=1, nreact_per_block
         curr_line, lines = append_new_str(f"{c:21.15E},".replace("E","D"), curr_line, lines)
     if(len(curr_line) > 0):
         lines.append(curr_line[:-1]+"&\n")
-    new_lines = add_new_array("real", "fcent_coef_troe_h" , len(coef_array), lines, new_lines)
+    new_lines = add_new_array("real(kind=8)", "fcent_coef_troe_h" , len(coef_array), lines, new_lines)
     
     return new_lines
 
@@ -360,7 +360,7 @@ def write_rocblas_coefficients(chem: chemistry, nreact_per_block):
                 curr_line, lines = append_new_str(f"{c:.1f},", curr_line, lines)
             if(len(curr_line) > 0):
                 lines.append(curr_line[:-1]+"&\n")
-            new_lines = add_new_array("real", coef_name, len(coef_array), lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", coef_name, len(coef_array), lines, new_lines)
     
     return new_lines
 

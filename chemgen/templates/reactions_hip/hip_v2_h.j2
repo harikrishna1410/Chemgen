@@ -1,0 +1,15 @@
+#ifndef GETRATES_HIP_V2_H
+#define GETRATES_HIP_V2_H
+
+#include <hip/hip_runtime.h>
+
+// Wrapper function declaration
+extern "C" void getrates_hip_wrapper_v2(double* P,
+                                        double* Temp,
+                                        int ng,
+                                        double* Ysp,
+                                        double* WDOT_RR,
+                                        double* logEG_d,
+                                        double* logC_d);
+
+#endif // GETRATES_HIP_V2_H

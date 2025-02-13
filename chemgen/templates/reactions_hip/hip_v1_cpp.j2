@@ -1,0 +1,385 @@
+///This file functions that parallelise the chemistry calculation only on grid points
+//similar to the openmp
+//*****************************only supports non-qssa calculations*******************
+
+#include "getrates_device_functions.h"
+#include "getrates_hip_v1.h"
+// #include "constants_v1.h"
+
+#define LDS
+#define NO_TRANSPOSE
+#define FUSE_EG_C
+#define USE_TROE
+#define USE_THREE_BODY
+///this only solves the nonqssa part
+static __global__ void rdot_merge_kernel(int ng,\
+                                  double* Temp, \
+                                  double* logEG, \
+                                  double* logC, \
+                                  double* wdot_rr) {
+
+    __shared__ double logEG_s[VECLEN*NSP_SK];
+    __shared__ double logC_s[VECLEN*NSP_RED];
+
+    int idx_g, rnum, L, ie_prev, idx_l, rnum_g, rnum_g1;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, T, ALOG_PFAC;
+    int rnum_s,rtype_st;
+    int tid;
+
+    ie_prev = blockIdx.x * VECLEN;
+    idx_l = threadIdx.x;
+    idx_g = ie_prev + idx_l;
+
+    T = Temp[idx_g];
+    ALOG_T = log(T);
+    TI = 1.0 / T;
+    ALOG_PFAC = log(PATM / (RU * T));
+
+    // Fill shared arrays log_eg_s and log_c_s
+    for (L = 0; L < NSP_SK; L++) {
+        logEG_s[idx_l + L * VECLEN] = logEG[idx_g + L * ng];
+    }
+    for (L = 0; L < NSP_RED; L++) {
+        logC_s[idx_l + L * VECLEN] = logC[idx_g + L * ng];
+    }
+    __syncthreads();
+    for(L=0;L<NSP_RED;L++){
+        wdot_rr[L*ng+idx_g] = 0.0;
+    }
+    for (rnum=0;rnum<NREACT_STD;rnum++) {
+        compute_log_RF_RB_arh_no_transpose(
+                                            VECLEN, 
+                                            idx_l,
+                                            rnum,
+                                            ALOG_T, 
+                                            TI, 
+                                            ALOG_PFAC,
+                                            logEG_s,
+                                            logC_s,
+                                            &ALOG_RF,
+                                            &ALOG_RB,
+                                            A_d,
+                                            B_d,
+                                            sk_map_d,
+                                            sk_coef_d,
+                                            map_r_d,
+                                            map_p_d,
+                                            coef_r_d,
+                                            coef_p_d
+                                            );
+        
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_d,
+                                            coef_r_d,
+                                            map_p_d,
+                                            coef_p_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#ifdef USE_THREE_BODY
+    for (rnum=0;rnum<NREACT_THIRD;rnum++) {
+        compute_log_RF_RB_three_body_no_transpose(
+                                        VECLEN,
+                                        idx_l,
+                                        rnum,
+                                        T,
+                                        ALOG_PFAC,
+                                        logEG_s,
+                                        logC_s,
+                                        &ALOG_RF, 
+                                        &ALOG_RB,
+                                        A_third_d,
+                                        B_third_d,
+                                        sk_map_third_d,
+                                        sk_coef_third_d,
+                                        map_r_third_d,
+                                        map_p_third_d,
+                                        coef_r_third_d,
+                                        coef_p_third_d,
+                                        eff_fac_third_d);
+        
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_third_d,
+                                            coef_r_third_d,
+                                            map_p_third_d,
+                                            coef_p_third_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#endif
+#ifdef USE_TROE
+    for(rnum=0;rnum<NREACT_TROE;rnum++){
+        compute_log_RF_RB_troe_no_transpose(
+                                        VECLEN,
+                                        idx_l,
+                                        rnum,
+                                        T,
+                                        ALOG_PFAC,
+                                        logEG_s,
+                                        logC_s,
+                                        &ALOG_RF, 
+                                        &ALOG_RB,
+                                        A_0_troe_d,
+                                        B_0_troe_d,
+                                        A_inf_troe_d,
+                                        B_inf_troe_d,
+                                        sk_map_troe_d,
+                                        sk_coef_troe_d,
+                                        map_r_troe_d,
+                                        map_p_troe_d,
+                                        coef_r_troe_d,
+                                        coef_p_troe_d,
+                                        eff_fac_troe_d,
+                                        fcent_coef_troe_d);
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_troe_d,
+                                            coef_r_troe_d,
+                                            map_p_troe_d,
+                                            coef_p_troe_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#endif
+    __syncthreads();
+}
+
+///this only solves the nonqssa part
+static __global__ void rdot_merge_kernel_no_lds(int ng,\
+                                  double* Temp, \
+                                  double* logEG, \
+                                  double* logC, \
+                                  double* wdot_rr) {
+
+    int idx_g, rnum, L, ie_prev, idx_l, rnum_g, rnum_g1;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, T, ALOG_PFAC;
+    int rnum_s,rtype_st;
+    int tid;
+
+    ie_prev = blockIdx.x * VECLEN;
+    idx_l = threadIdx.x;
+    idx_g = ie_prev + idx_l;
+
+    T = Temp[idx_g];
+    ALOG_T = log(T);
+    TI = 1.0 / T;
+    ALOG_PFAC = log(PATM / (RU * T));
+
+    for(L=0;L<NSP_RED;L++){
+        wdot_rr[L*ng+idx_g] = 0.0;
+    }
+    for (rnum=0;rnum<NREACT_STD;rnum++) {
+        compute_log_RF_RB_arh_no_transpose(
+                                            ng, 
+                                            idx_g,
+                                            rnum,
+                                            ALOG_T, 
+                                            TI, 
+                                            ALOG_PFAC,
+                                            logEG,
+                                            logC,
+                                            &ALOG_RF,
+                                            &ALOG_RB,
+                                            A_d,
+                                            B_d,
+                                            sk_map_d,
+                                            sk_coef_d,
+                                            map_r_d,
+                                            map_p_d,
+                                            coef_r_d,
+                                            coef_p_d
+                                            );
+        
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_d,
+                                            coef_r_d,
+                                            map_p_d,
+                                            coef_p_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#ifdef USE_THREE_BODY
+    for (rnum=0;rnum<NREACT_THIRD;rnum++) {
+        compute_log_RF_RB_three_body_no_transpose(
+                                        ng,
+                                        idx_g,
+                                        rnum,
+                                        T,
+                                        ALOG_PFAC,
+                                        logEG,
+                                        logC,
+                                        &ALOG_RF, 
+                                        &ALOG_RB,
+                                        A_third_d,
+                                        B_third_d,
+                                        sk_map_third_d,
+                                        sk_coef_third_d,
+                                        map_r_third_d,
+                                        map_p_third_d,
+                                        coef_r_third_d,
+                                        coef_p_third_d,
+                                        eff_fac_third_d);
+        
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_third_d,
+                                            coef_r_third_d,
+                                            map_p_third_d,
+                                            coef_p_third_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#endif
+#ifdef USE_TROE
+    for(rnum=0;rnum<NREACT_TROE;rnum++){
+        compute_log_RF_RB_troe_no_transpose(
+                                        ng,
+                                        idx_g,
+                                        rnum,
+                                        T,
+                                        ALOG_PFAC,
+                                        logEG,
+                                        logC,
+                                        &ALOG_RF, 
+                                        &ALOG_RB,
+                                        A_0_troe_d,
+                                        B_0_troe_d,
+                                        A_inf_troe_d,
+                                        B_inf_troe_d,
+                                        sk_map_troe_d,
+                                        sk_coef_troe_d,
+                                        map_r_troe_d,
+                                        map_p_troe_d,
+                                        coef_r_troe_d,
+                                        coef_p_troe_d,
+                                        eff_fac_troe_d,
+                                        fcent_coef_troe_d);
+        //get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        //compute wdot
+        compute_wdot_no_atomic_no_transpose(ng,
+                                            idx_g,
+                                            rnum,
+                                            map_r_troe_d,
+                                            coef_r_troe_d,
+                                            map_p_troe_d,
+                                            coef_p_troe_d,
+                                            RR, 
+                                            wdot_rr);
+    }
+#endif
+    __syncthreads();
+}
+
+static __global__ void compute_logC_kernel(
+    int ng,
+    double *P,
+    double *T,
+    double *Y,
+    double *logC
+){
+    int idx_l = threadIdx.x;
+    int idx_g = blockIdx.x * VECLEN + idx_l;
+
+    compute_c_no_transpose(
+        ng,
+        idx_g,
+        mw_d,
+        Y,
+        P,
+        T,
+        logC
+    );
+    for (int i=0; i < NSP_RED; i++ ){
+        logC[i*ng + idx_g] = log(max(logC[i*ng + idx_g],SMALL));
+    }
+}
+
+static __global__ void compute_logEG_kernel(
+    int ng,
+    double *T,
+    double *logEG
+){
+    int idx_l = threadIdx.x;
+    int idx_g = blockIdx.x * VECLEN + idx_l;
+
+    compute_logEG_no_transpose(
+        ng,
+        idx_g,
+        smh_coef_d,
+        T_mid_d,
+        T,
+        logEG
+    );
+}
+
+extern "C" void getrates_hip_wrapper_v1(double* P, \
+                                        double* Temp, \
+                                        int ng, \
+                                        double* Ysp,\
+                                        double* WDOT_RR,\
+                                        double* logEG_d,\
+                                        double* logC_d) {
+
+
+    dim3 blocks, threads;
+    int L;    
+    
+    threads = dim3(VECLEN,1, 1);
+    blocks = dim3(ng/VECLEN, 1, 1);
+   
+    // Launch kernel to compute logC
+    hipLaunchKernelGGL(compute_logC_kernel, blocks, threads, 0, 0,
+                       ng, P, Temp, Ysp, logC_d);
+
+    // Launch kernel to compute logEG
+    hipLaunchKernelGGL(compute_logEG_kernel, blocks, threads, 0, 0,
+                       ng, Temp, logEG_d);
+
+    // Synchronize to ensure computations are complete
+    hipDeviceSynchronize();
+#ifndef LDS
+    hipLaunchKernelGGL(rdot_merge_kernel_no_lds, blocks, threads, 0, 0,
+                  ng, Temp, logEG_d, logC_d, WDOT_RR);
+#else
+    hipLaunchKernelGGL(rdot_merge_kernel, blocks, threads, 0, 0,
+                  ng, Temp, logEG_d, logC_d, WDOT_RR);
+#endif
+    hipDeviceSynchronize();
+}
+
+extern "C" void compare_host_device_constants_on_host(double*A_h){
+        double * A_h2;
+
+        A_h2 = (double *)malloc(sizeof(double)*NREACT_MECH);
+        hipMemcpyFromSymbol(A_h2,HIP_SYMBOL(A_d),sizeof(double)*NREACT_MECH,0,hipMemcpyDeviceToHost);
+
+        for(int i =0;i<NREACT_MECH;i++){
+            if(A_h2[i] != A_h[i]){
+                printf("A not same at rnum=%d, in=%e, out=%e",i,A_h[i],A_h2[i]);
+            }
+        }
+}

@@ -1,0 +1,908 @@
+#ifndef GETRATES_DEVICE_FUNCTIONS_H
+#define GETRATES_DEVICE_FUNCTIONS_H
+
+#include "math.h"
+#ifdef HIP_CHEM_v4
+#include "constants_v4.h"
+#elif HIP_CHEM_v3
+#include "constants_v3.h"
+#elif HIP_CHEM_v2
+#include "constants_v2.h"
+#else
+#include "constants_v1.h"
+#endif
+////computes RF and RB from T,TI,PFAC,EG,C,A,B
+__device__ inline double compute_RF_RB_arh(double T,\
+                                        double TI, \
+                                        double PFAC,\
+                                        double* EG, \
+                                        double* C, \
+                                        double A, \
+                                        double* B,\
+                                        int* sk_map, \
+                                        int* sk_coef,\
+                                        double * RF, \
+                                        double * RB) {
+  return 0.0;
+}
+
+// Function to compute the logarithm of forward and reverse reaction rates for Arrhenius reactions
+// Assumes EG and C are not transposed, with grid points as the fastest moving index
+// ng:       [in]  Number of grid points
+// idx:      [in]  Grid point index corresponding to ng
+// rnum:     [in]  Global reaction number
+// ALOG_T:   [in]  Natural logarithm of temperature
+// TI:       [in]  Inverse of temperature
+// ALOG_PFAC:[in]  Natural logarithm of pressure factor
+// logEG:    [in]  Array of logarithms of equilibrium constants
+// logC:     [in]  Array of logarithms of species molar concentrations
+// ALOG_RF:  [out] Natural logarithm of forward reaction rate
+// ALOG_RB:  [out] Natural logarithm of reverse reaction rate
+// Returns:  The logarithm of the forward equilibrium constant
+__device__ inline double compute_log_RF_RB_arh_no_transpose(
+  int ng,
+  int idx,
+  int rnum,
+  double ALOG_T,
+  double TI, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_d,
+  double* B_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d
+){
+   double logKF;
+   int L,ST_COEF_SUM;
+
+   //get forward constant
+   ALOG_RF[0] = ALOG_T*B_d[rnum*2] + TI*B_d[rnum*2 + 1] + A_d[rnum];
+   // this is so that I can use this function for TROE
+   logKF = ALOG_RF[0];
+   ALOG_RB[0] = ALOG_RF[0];
+
+   ST_COEF_SUM = 0;
+   for(L=0;L<MAX_SP2;L++){   
+     ALOG_RB[0] -= logEG[sk_map_d[rnum*MAX_SP2 + L]*ng + idx] * sk_coef_d[rnum*MAX_SP2 + L];
+     ST_COEF_SUM = ST_COEF_SUM + sk_coef_d[rnum*MAX_SP2 + L];
+   }
+   ALOG_RB[0] -= ALOG_PFAC*ST_COEF_SUM;
+   
+   for(L=0;L<MAX_SP;L++){
+     ALOG_RF[0] += logC[map_r_d[rnum*MAX_SP + L]*ng + idx]*coef_r_d[rnum*MAX_SP + L];
+     ALOG_RB[0] += logC[map_p_d[rnum*MAX_SP + L]*ng + idx]*coef_p_d[rnum*MAX_SP + L];
+   }
+   
+   return logKF;
+}
+
+__device__ inline void compute_log_RF_RB_arh_nt_low_reg(
+  int ng,
+  int idx,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_d,
+  double* B_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d
+){
+   int rnum_max_sp = rnum * MAX_SP;
+   int rnum_max_sp2 = rnum * MAX_SP2;
+   int rnum_idx, rnum_idx2;
+
+   //get forward constant
+   ALOG_RF[0] = log(T)*B_d[rnum*2] + B_d[rnum*2 + 1]/T + A_d[rnum];
+   ALOG_RB[0] = ALOG_RF[0];
+   
+   for(int L=0; L<MAX_SP; L++){
+     rnum_idx = rnum_max_sp + L;
+     ALOG_RF[0] += logC[map_r_d[rnum_idx]*ng + idx]*coef_r_d[rnum_idx];
+     ALOG_RB[0] += logC[map_p_d[rnum_idx]*ng + idx]*coef_p_d[rnum_idx];
+   }
+
+   for(int L=0; L<MAX_SP2; L++){
+     rnum_idx2 = rnum_max_sp2 + L;
+     ALOG_RB[0] -= logEG[sk_map_d[rnum_idx2]*ng + idx] * sk_coef_d[rnum_idx2];
+     ALOG_RB[0] -= ALOG_PFAC*sk_coef_d[rnum_max_sp2 + L];
+   }
+}
+
+// Function to compute the logarithm of forward and reverse reaction rates for Arrhenius reactions
+// Assumes EG and C are transposed, with species as the fastest moving index
+// VL:       [in]  Vector length (number of grid points processed in parallel)
+// idx_g:    [in]  Global index of the current grid point
+// rnum:     [in]  Global reaction number
+// ALOG_T:   [in]  Natural logarithm of temperature
+// TI:       [in]  Inverse of temperature
+// ALOG_PFAC:[in]  Natural logarithm of pressure factor
+// logEG:    [in]  Array of logarithms of equilibrium constants (transposed)
+// logC:     [in]  Array of logarithms of species molar concentrations (transposed)
+// ALOG_RF:  [out] Natural logarithm of forward reaction rate
+// ALOG_RB:  [out] Natural logarithm of reverse reaction rate
+// Returns:  The logarithm of the forward equilibrium constant
+__device__ inline double compute_log_RF_RB_arh_transpose(
+  int VL,
+  int idx_g,
+  int rnum,
+  double ALOG_T,
+  double TI, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_d,
+  double* B_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d
+){
+   double logKF;
+   int L,ST_COEF_SUM;
+
+   // Calculate forward rate constant
+   ALOG_RF[0] = ALOG_T*B_d[rnum*2] + TI*B_d[rnum*2 + 1] + A_d[rnum];
+   // Store for potential TROE calculations
+   logKF = ALOG_RF[0];
+   ALOG_RB[0] = ALOG_RF[0];
+
+   // Calculate reverse rate constant
+   ST_COEF_SUM = 0;
+   for(L=0;L<MAX_SP2;L++){   
+     // Note the transposed access pattern for logEG
+     ALOG_RB[0] -= logEG[idx_g*NSP_SK + sk_map_d[rnum*MAX_SP2 + L]] * sk_coef_d[rnum*MAX_SP2 + L];
+     ST_COEF_SUM = ST_COEF_SUM + sk_coef_d[rnum*MAX_SP2 + L];
+   }
+   ALOG_RB[0] -= ALOG_PFAC*ST_COEF_SUM;
+
+   for(L=0;L<MAX_SP;L++){
+     // Note the transposed access pattern for logC
+     ALOG_RF[0] += logC[idx_g*NSP_RED + map_r_d[rnum*MAX_SP + L]]*coef_r_d[rnum*MAX_SP + L];
+     ALOG_RB[0] += logC[idx_g*NSP_RED + map_p_d[rnum*MAX_SP + L]]*coef_p_d[rnum*MAX_SP + L];
+   }
+    
+   return logKF;
+}
+
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB using the TROE formulations
+//NOTE: I tried using as less registers as possible. Register pressure
+//will be higher for this.
+__device__ inline void compute_log_RF_RB_troe_transpose(
+  int ng,
+  int idx_g,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_0_d,
+  double* B_0_d,
+  double* A_inf_d,
+  double* B_inf_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d,
+  double* third_eff_fac_d,
+  double* fcent_coef_d) {
+
+    const double SMALL = 1.0e-200;
+    const int rnum2 = rnum*2;
+    const int rnum6 = rnum*6;
+    const int rnum_max_sp = rnum * MAX_SP;
+    const int rnum_max_sp2 = rnum * MAX_SP2;
+    const int rnum_nsp = rnum*NSP_RED;
+    const double LOG10 = log(10);
+    
+    double log10_fcent, log10_pr, log10_f, M=0.0;
+    int idx_sp, idx_sp2;
+
+    // Compute log_fcent first since we need it multiple times
+    log10_fcent = log10(fcent_coef_d[rnum6]*exp(-T/fcent_coef_d[rnum6 + 1]) + 
+                    fcent_coef_d[rnum6 + 2]*exp(-T/fcent_coef_d[rnum6 + 3]) + 
+                    fcent_coef_d[rnum6 + 4]*exp(-fcent_coef_d[rnum6 + 5]/T));
+
+    // Compute log_kf and reuse rnum*2 calculation
+    ALOG_RF[0] = log(T)*B_inf_d[rnum2] + B_inf_d[rnum2 + 1]/T + A_inf_d[rnum];
+    
+    // Compute log_pr, reusing log_kf from ALOG_RF[0]
+    log10_pr = log(T)*B_0_d[rnum2] + B_0_d[rnum2 + 1]/T + A_0_d[rnum] - ALOG_RF[0];
+    
+    // Accumulate third body effects
+    //this is quite expensive. However, registers are low
+    //This was like this assuming that number of Fall-off reactions
+    //will be small.
+    for(int L=0; L<NSP_RED; L++) {
+        M += exp(logC[idx_g*NSP_RED + L]) * third_eff_fac_d[rnum_nsp + L];
+    }
+    log10_pr += log(M);
+    log10_pr /= LOG10;
+
+    // Compute F-center factor
+    log10_f = (-0.67*log10_fcent + log10_pr - 0.4) / (-1.1762*log10_fcent - 0.14*log10_pr + 0.806);
+    log10_f = log10_fcent/(1.0 + log10_f*log10_f);
+    
+    // Update forward rate
+    ALOG_RF[0] += LOG10*(log10_pr + log10_f) - log1p(exp(LOG10*log10_pr));
+    ALOG_RB[0] = ALOG_RF[0];
+
+    // Process reactants and products
+    for(int L=0; L<MAX_SP; L++){
+        idx_sp = rnum_max_sp + L;
+        ALOG_RF[0] += logC[idx_g*NSP_RED + map_r_d[idx_sp]]*coef_r_d[idx_sp];
+        ALOG_RB[0] += logC[idx_g*NSP_RED + map_p_d[idx_sp]]*coef_p_d[idx_sp];
+    }
+
+    // Process equilibrium terms
+    for(int L=0; L<MAX_SP2; L++){
+        idx_sp2 = rnum_max_sp2 + L;
+        ALOG_RB[0] -= logEG[idx_g*NSP_SK + sk_map_d[idx_sp2]] * sk_coef_d[idx_sp2];
+        ALOG_RB[0] -= ALOG_PFAC * sk_coef_d[idx_sp2];
+    }
+}
+
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB using the TROE formulations
+//NOTE: I tried using as less registers as possible. Register pressure
+//will be higher for this.
+__device__ inline void compute_log_RF_RB_troe_no_transpose(
+  int ng,
+  int idx,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_0_d,
+  double* B_0_d,
+  double* A_inf_d,
+  double* B_inf_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d,
+  double* third_eff_fac_d,
+  double* fcent_coef_d) {
+
+    const double SMALL = 1.0e-200;
+    const int rnum2 = rnum*2;
+    const int rnum6 = rnum*6;
+    const int rnum_max_sp = rnum * MAX_SP;
+    const int rnum_max_sp2 = rnum * MAX_SP2;
+    const int rnum_nsp = rnum*NSP_RED;
+    const double LOG10 = log(10);
+    
+    double log10_fcent, log10_pr, log10_f, M=0.0;
+    int idx_sp, idx_sp2;
+
+    // Compute log_fcent first since we need it multiple times
+    log10_fcent = log10(fcent_coef_d[rnum6]*exp(-T/fcent_coef_d[rnum6 + 1]) + 
+                    fcent_coef_d[rnum6 + 2]*exp(-T/fcent_coef_d[rnum6 + 3]) + 
+                    fcent_coef_d[rnum6 + 4]*exp(-fcent_coef_d[rnum6 + 5]/T));
+
+    // Compute log_kf and reuse rnum*2 calculation
+    ALOG_RF[0] = log(T)*B_inf_d[rnum2] + B_inf_d[rnum2 + 1]/T + A_inf_d[rnum];
+    
+    // Compute log_pr, reusing log_kf from ALOG_RF[0]
+    log10_pr = log(T)*B_0_d[rnum2] + B_0_d[rnum2 + 1]/T + A_0_d[rnum] - ALOG_RF[0];
+    
+    // Accumulate third body effects
+    //this is quite expensive. However, registers are low
+    //This was like this assuming that number of Fall-off reactions
+    //will be small.
+    for(int L=0; L<NSP_RED; L++) {
+        M += exp(logC[L*ng + idx]) * third_eff_fac_d[rnum_nsp + L];
+    }
+    log10_pr += log(M);
+    log10_pr /= LOG10;
+
+    // Compute F-center factor
+    log10_f = (-0.67*log10_fcent + log10_pr - 0.4) / (-1.1762*log10_fcent - 0.14*log10_pr + 0.806);
+    log10_f = log10_fcent/(1.0 + log10_f*log10_f);
+    
+    // Update forward rate
+    ALOG_RF[0] += LOG10*(log10_pr + log10_f) - log1p(exp(LOG10*log10_pr));
+    ALOG_RB[0] = ALOG_RF[0];
+
+    // Process reactants and products
+    for(int L=0; L<MAX_SP; L++){
+        idx_sp = rnum_max_sp + L;
+        ALOG_RF[0] += logC[map_r_d[idx_sp]*ng + idx]*coef_r_d[idx_sp];
+        ALOG_RB[0] += logC[map_p_d[idx_sp]*ng + idx]*coef_p_d[idx_sp];
+    }
+
+    // Process equilibrium terms
+    for(int L=0; L<MAX_SP2; L++){
+        idx_sp2 = rnum_max_sp2 + L;
+        ALOG_RB[0] -= logEG[sk_map_d[idx_sp2]*ng + idx] * sk_coef_d[idx_sp2];
+        ALOG_RB[0] -= ALOG_PFAC * sk_coef_d[idx_sp2];
+    }
+}
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB using the TROE formulations
+//NOTE: I tried using as less registers as possible. Register pressure
+//will be higher for this.
+//unlike above this exactly mimics the steps in chemkin
+//this is used only for validation purposes. its slower than above
+__device__ inline void compute_log_RF_RB_troe_nt_ck(
+  int ng,
+  int idx,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_0_d,
+  double* B_0_d,
+  double* A_inf_d,
+  double* B_inf_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d,
+  double* third_eff_fac_d,
+  double* fcent_coef_d) {
+
+    const double SMALL = 1.0e-200;
+    const int rnum2 = rnum*2;
+    const int rnum6 = rnum*6;
+    const int rnum_max_sp = rnum * MAX_SP;
+    const int rnum_max_sp2 = rnum * MAX_SP2;
+    const int rnum_nsp = rnum*NSP_RED;
+    const double LOG10 = log(10);
+    
+    double M=0.0;
+    double k0,kinf,Pr,fcent,C,N,F,log10_f;
+    int idx_sp, idx_sp2;
+
+    // Compute log_fcent first since we need it multiple times
+    fcent = fcent_coef_d[rnum6]*exp(-T/fcent_coef_d[rnum6 + 1]) + 
+            fcent_coef_d[rnum6 + 2]*exp(-T/fcent_coef_d[rnum6 + 3]) + 
+            fcent_coef_d[rnum6 + 4]*exp(-fcent_coef_d[rnum6 + 5]/T);
+
+    // Compute log_kf and reuse rnum*2 calculation
+    kinf = exp(A_inf_d[rnum])*pow(T,B_inf_d[rnum2])*exp(B_inf_d[rnum2 + 1]/T);
+    k0 = exp(A_0_d[rnum])*pow(T,B_0_d[rnum2])*exp(B_0_d[rnum2 + 1]/T);
+    for(int L=0; L<NSP_RED; L++) {
+        M += exp(logC[L*ng + idx]) * third_eff_fac_d[rnum_nsp + L];
+    }
+    Pr = k0*M/kinf;
+    C = -0.4 - 0.67 * log10(fcent);
+    N = 0.75 - 1.27 * log10(fcent);
+    log10_f = (log10(Pr) + C)/(N - 0.14*(log10(Pr) + C));
+    log10_f = log10(fcent)/(1+log10_f*log10_f);
+    
+    ALOG_RF[0] = kinf*(Pr/(1.0+Pr))*pow(10,log10_f);
+    // Update forward rate
+    ALOG_RF[0] = log(ALOG_RF[0]);
+    ALOG_RB[0] = ALOG_RF[0];
+
+    // Process reactants and products
+    for(int L=0; L<MAX_SP; L++){
+        idx_sp = rnum_max_sp + L;
+        ALOG_RF[0] += logC[map_r_d[idx_sp]*ng + idx]*coef_r_d[idx_sp];
+        ALOG_RB[0] += logC[map_p_d[idx_sp]*ng + idx]*coef_p_d[idx_sp];
+    }
+
+    // Process equilibrium terms
+    for(int L=0; L<MAX_SP2; L++){
+        idx_sp2 = rnum_max_sp2 + L;
+        ALOG_RB[0] -= logEG[sk_map_d[idx_sp2]*ng + idx] * sk_coef_d[idx_sp2];
+        ALOG_RB[0] -= ALOG_PFAC * sk_coef_d[idx_sp2];
+    }
+}
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB for three body reactions
+//NOTE: I tried using as less registers as possible. Register pressure
+//will be higher for this.
+__device__ inline void compute_log_RF_RB_three_body_transpose(
+  int ng,
+  int idx_g,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_d,
+  double* B_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d,
+  double* third_eff_fac_d) {
+
+    const double SMALL = 1.0e-200;
+    const int rnum2 = rnum*2;
+    const int rnum_max_sp = rnum * MAX_SP;
+    const int rnum_max_sp2 = rnum * MAX_SP2;
+    const int rnum_nsp = rnum*NSP_RED;
+    int idx_sp, idx_sp2;
+    double M=0.0;
+
+    // Compute log_kf and reuse rnum*2 calculation
+    ALOG_RF[0] = log(T)*B_d[rnum2] + B_d[rnum2 + 1]/T + A_d[rnum];
+    
+    // Accumulate third body effects
+    //this is quite expensive. This is written assuming number of 
+    //three body reactions will be small.
+    for(int L=0; L<NSP_RED; L++) {
+        M += exp(logC[idx_g*NSP_RED + L]) * third_eff_fac_d[rnum_nsp + L];
+    }
+    ALOG_RF[0] += log(M);
+
+    ALOG_RB[0] = ALOG_RF[0];
+
+    // Process reactants and products
+    for(int L=0; L<MAX_SP; L++){
+        idx_sp = rnum_max_sp + L;
+        ALOG_RF[0] += logC[idx_g*NSP_RED + map_r_d[idx_sp]]*coef_r_d[idx_sp];
+        ALOG_RB[0] += logC[idx_g*NSP_RED + map_p_d[idx_sp]]*coef_p_d[idx_sp];
+    }
+
+    // Process equilibrium terms
+    for(int L=0; L<MAX_SP2; L++){
+        idx_sp2 = rnum_max_sp2 + L;
+        ALOG_RB[0] -= logEG[idx_g*NSP_SK + sk_map_d[idx_sp2]] * sk_coef_d[idx_sp2];
+        ALOG_RB[0] -= ALOG_PFAC * sk_coef_d[idx_sp2];
+    }
+}
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB for three body reactions
+//NOTE: I tried using as less registers as possible. Register pressure
+//will be higher for this.
+__device__ inline void compute_log_RF_RB_three_body_no_transpose(
+  int ng,
+  int idx,
+  int rnum,
+  double T, 
+  double ALOG_PFAC,
+  double* logEG, 
+  double* logC,
+  double* ALOG_RF, 
+  double* ALOG_RB,
+  double* A_d,
+  double* B_d,
+  int* sk_map_d,
+  double* sk_coef_d,
+  int* map_r_d,
+  int* map_p_d,
+  double* coef_r_d,
+  double* coef_p_d,
+  double* third_eff_fac_d) {
+
+    const double SMALL = 1.0e-200;
+    const int rnum2 = rnum*2;
+    const int rnum_max_sp = rnum * MAX_SP;
+    const int rnum_max_sp2 = rnum * MAX_SP2;
+    const int rnum_nsp = rnum*NSP_RED;
+    int idx_sp, idx_sp2;
+    double M=0.0;
+
+    // Compute log_kf and reuse rnum*2 calculation
+    ALOG_RF[0] = log(T)*B_d[rnum2] + B_d[rnum2 + 1]/T + A_d[rnum];
+    
+    // Accumulate third body effects
+    //this is quite expensive. This is written assuming number of 
+    //three body reactions will be small.
+    for(int L=0; L<NSP_RED; L++) {
+        M += exp(logC[L*ng + idx]) * third_eff_fac_d[rnum_nsp + L];
+    }
+    ALOG_RF[0] += log(M);
+
+    ALOG_RB[0] = ALOG_RF[0];
+
+    // Process reactants and products
+    for(int L=0; L<MAX_SP; L++){
+        idx_sp = rnum_max_sp + L;
+        ALOG_RF[0] += logC[map_r_d[idx_sp]*ng + idx]*coef_r_d[idx_sp];
+        ALOG_RB[0] += logC[map_p_d[idx_sp]*ng + idx]*coef_p_d[idx_sp];
+    }
+
+    // Process equilibrium terms
+    for(int L=0; L<MAX_SP2; L++){
+        idx_sp2 = rnum_max_sp2 + L;
+        ALOG_RB[0] -= logEG[sk_map_d[idx_sp2]*ng + idx] * sk_coef_d[idx_sp2];
+        ALOG_RB[0] -= ALOG_PFAC * sk_coef_d[idx_sp2];
+    }
+}
+#if 0
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB for PLOG reactions
+__device__ inline void compute_RF_RB_plog(){
+}
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute RF and RB for third body reactions
+__device__ inline void compute_RF_RB_third_body(double ALOG_T,double TI, double ALOG_PFAC,\
+                                    double* logEG, double* logC, double CTOT, 
+                                    double A, double* B,\
+                                    int* sk_map, int* sk_coef,\
+                                    double* third_eff_fac, int* third_map,\
+                                    double * ALOG_RF, double * ALOG_RB) {
+    int L;
+    double CTB;
+
+    compute_RF_RB_arh(ALOG_T,TI,ALOG_PFAC,\
+                      logEG,logC, \
+                      A,B,sk_map,sk_coef,\
+                      ALOG_RF,ALOG_RB);
+    CTB = CTOT;
+    for(L=0;L<MR_third;L++){
+       CTB += third_eff_fac[L]*exp(logC[third_map[L]]);
+    }
+
+    ALOG_RF[0] = ALOG_RF[0] + log(CTB);
+    ALOG_RB[0] = ALOG_RB[0] + log(CTB);
+}
+#endif
+///********************************************************************************************
+///********************************************************************************************
+///********************************************************************************************
+//compute wdot from net rate of progress
+// #ifdef DONOT_PAD_NET_RATE
+// __device__ inline void compute_wdot(double RR, int* coef_r,int* coef_p, \
+// 					int* map_r, int* map_p, \
+// 					int count_r, int count_p, \
+// 					double* wdot){
+  
+//     double work;
+//     int L;
+ 
+//     for(L=0;L<count_r;L++){
+//        work = coef_r[L]*RR;
+//        atomicAdd(&wdot[map_r[L]],work);
+//     }
+//     for(L=0;L<count_p;L++){
+//        work = coef_p[MR + L]*RR;
+//        atomicAdd(&wdot[map_p[L]],work);
+//     }
+// }
+//#else
+// ng:    [in]  Number of grid points (contiguous dimension of wdot)
+// idx:   [in]  Grid point index starting from 0 wrt wdot pointer
+// rnum:  [in]  Global reaction number
+// RR:    [in]  Net rate of progress of rnum
+// wdot:  [out] Output wdot array
+__device__ inline void compute_wdot_atomic_transpose(
+    int ng,
+    int idx,
+    int rnum,
+    int* map_r_d,
+    double* coef_r_d,
+    int* map_p_d,
+    double* coef_p_d,
+    double RR,
+    double* wdot
+) {
+    double work;
+    int L;
+
+    for(L=0;L<MAX_SP;L++){
+        work = coef_r_d[rnum*MAX_SP + L]*RR;
+        atomicAdd(&wdot[map_r_d[rnum*MAX_SP + L] + idx*NSP_RED], -work);
+        ///
+        work = coef_p_d[rnum*MAX_SP + L]*RR;
+        atomicAdd(&wdot[map_p_d[rnum*MAX_SP + L] + idx*NSP_RED], work);
+    }
+}
+
+// ng:    [in]  Number of grid points (contiguous dimension of wdot)
+// idx:   [in]  Grid point index starting from 0 wrt wdot pointer
+// rnum:  [in]  Global reaction number
+// RR:    [in]  Net rate of progress of rnum
+// wdot:  [out] Output wdot array
+__device__ inline void compute_wdot_atomic_no_transpose(
+    int ng,
+    int idx,
+    int rnum,
+    int* map_r_d,
+    double* coef_r_d,
+    int* map_p_d,
+    double* coef_p_d,
+    double RR,
+    double* wdot
+) {
+    double work;
+    int L;
+
+    for(L=0;L<MAX_SP;L++){
+        work = coef_r_d[rnum*MAX_SP + L]*RR;
+        atomicAdd(&wdot[map_r_d[rnum*MAX_SP + L]*ng + idx], -work);
+        ///
+        work = coef_p_d[rnum*MAX_SP + L]*RR;
+        atomicAdd(&wdot[map_p_d[rnum*MAX_SP + L]*ng + idx], work);
+    }
+}
+
+//#endif
+//function to compute wdot without atomic operations assuming grid points are the fastest moving index
+// ng:    [in]  Number of grid points (contiguous dimension of wdot)
+// idx:   [in]  Grid point index starting from 0 wrt wdot pointer
+// rnum:  [in]  Global reaction number
+// RR:    [in]  Net rate of progress of rnum
+// wdot:  [out] Output wdot array
+__device__ inline void compute_wdot_no_atomic_no_transpose(
+    int ng,
+    int idx,
+    int rnum,
+    int* map_r_d,
+    double* coef_r_d,
+    int* map_p_d,
+    double* coef_p_d,
+    double RR,
+    double* wdot
+) {
+    
+    double work;
+    int L;
+ 
+    for(L=0;L<MAX_SP;L++){
+       work = coef_r_d[rnum*MAX_SP + L]*RR;
+      //  printf("work = %e, map_r_d = %d, coef_r_d = %e, RR = %e \n", work, map_r_d[rnum*MAX_SP + L], coef_r_d[rnum*MAX_SP + L], RR);
+       wdot[map_r_d[rnum*MAX_SP + L]*ng + idx] -= work;
+       ///
+       work = coef_p_d[rnum*MAX_SP + L]*RR;
+      // printf("work = %e, map_p_d = %d, coef_p_d = %e, RR = %e \n", work, map_p_d[rnum*MAX_SP + L], coef_p_d[rnum*MAX_SP + L], RR);
+       wdot[map_p_d[rnum*MAX_SP + L]*ng + idx] += work;
+    }
+}
+
+//this function compute molar concentration from mass fraction,mw,P,and T
+//this function assumes that grid point is the fastest moving dimension
+__device__ inline void compute_c_no_transpose(
+  int ng,
+  int idx,
+  double *mw_d,
+  double *Y,
+  double *P,
+  double *T,
+  double *C
+){
+  double ctot = 0.0;
+  for (int i = 0; i < NSP_RED; i++) {
+    C[i*ng + idx] = Y[i*ng + idx] / mw_d[i];
+    ctot += C[i*ng + idx];
+  }
+  
+  for (int i = 0; i < NSP_RED; i++) {
+    C[i*ng + idx] = C[i*ng + idx] * P[idx] / (RU * ctot * T[idx]);
+  }
+}
+
+//this function computes only the sigma(Y/MW)
+__device__ inline double compute_sigma_Y_MW_no_transpose(
+  int ng,
+  int idx,
+  double *mw_d,
+  double *Y
+){
+  double ctot = 0.0;
+  for (int i = 0; i < NSP_RED; i++) {
+    ctot += Y[i*ng + idx] / mw_d[i];
+  }
+  return ctot;
+}
+
+//this function compute molar concentration from mass fraction,mw,P,and T
+//this function assumes that species is the fastest moving dimension
+__device__ inline void compute_c_transpose(
+  int ng,
+  int idx,
+  double *mw_d,
+  double *Y,
+  double *P,
+  double *T,
+  double *C
+){
+  double ctot = 0.0;
+  for (int i = 0; i < NSP_RED; i++) {
+    C[idx*NSP_RED + i] = Y[idx*NSP_RED + i] / mw_d[i];
+    ctot += C[idx*NSP_RED + i];
+  }
+  
+  for (int i = 0; i < NSP_RED; i++) {
+    C[idx*NSP_RED + i] = C[idx*NSP_RED + i] * P[idx] / (RU * ctot * T[idx]);
+  }
+}
+
+
+__device__ inline void compute_logEG_no_transpose(
+  int ng,
+  int idx,
+  double *smh_coef_d,
+  double *T_mid_d,
+  double *T,
+  double *logEG
+){
+        double T_local = T[idx];
+        double logT = log(T_local);
+        double invT = 1.0 / T_local;
+        double T2 = T_local * T_local;
+        double T3 = T2 * T_local;
+        double T4 = T3 * T_local;
+
+        double smh_low, smh_high, smh;
+
+        for (int i = 0; i < NSP_SK; i++) {
+            smh_low = smh_coef_d[i*14 + 0] + smh_coef_d[i*14 + 1] * logT
+                    + smh_coef_d[i*14 + 2] * T_local
+                    + smh_coef_d[i*14 + 3] * T2
+                    + smh_coef_d[i*14 + 4] * T3
+                    + smh_coef_d[i*14 + 5] * T4
+                    + smh_coef_d[i*14 + 6] * invT;
+
+            smh_high = smh_coef_d[i*14 + 7] + smh_coef_d[i*14 + 8] * logT
+                     + smh_coef_d[i*14 + 9] * T_local
+                     + smh_coef_d[i*14 + 10] * T2
+                     + smh_coef_d[i*14 + 11] * T3
+                     + smh_coef_d[i*14 + 12] * T4
+                     + smh_coef_d[i*14 + 13] * invT;
+
+            smh = smh_low + (smh_high - smh_low) * 0.5 * (1 + copysign(1.0, T_local - T_mid_d[i]));
+            logEG[i*ng + idx] = smh;
+        }
+}
+
+
+__device__ inline void compute_logEG_transpose(
+  int ng,
+  int idx,
+  double *smh_coef_d,
+  double *T_mid_d,
+  double *T,
+  double *logEG
+){
+        double T_local = T[idx];
+        double logT = log(T_local);
+        double invT = 1.0 / T_local;
+        double T2 = T_local * T_local;
+        double T3 = T2 * T_local;
+        double T4 = T3 * T_local;
+
+        double smh_low, smh_high, smh;
+
+        for (int i = 0; i < NSP_SK; i++) {
+            smh_low = smh_coef_d[i*14 + 0] + smh_coef_d[i*14 + 1] * logT
+                    + smh_coef_d[i*14 + 2] * T_local
+                    + smh_coef_d[i*14 + 3] * T2
+                    + smh_coef_d[i*14 + 4] * T3
+                    + smh_coef_d[i*14 + 5] * T4
+                    + smh_coef_d[i*14 + 6] * invT;
+
+            smh_high = smh_coef_d[i*14 + 7] + smh_coef_d[i*14 + 8] * logT
+                     + smh_coef_d[i*14 + 9] * T_local
+                     + smh_coef_d[i*14 + 10] * T2
+                     + smh_coef_d[i*14 + 11] * T3
+                     + smh_coef_d[i*14 + 12] * T4
+                     + smh_coef_d[i*14 + 13] * invT;
+
+            smh = smh_low + (smh_high - smh_low) * 0.5 * (1 + copysign(1.0, T_local - T_mid_d[i]));
+            logEG[idx*NSP_SK + i] = smh;
+        }
+}
+
+__device__ inline void compute_logEG_no_transpose_single_species(
+  int ng,
+  int idx,
+  int species_idx,
+  double *smh_coef_d,
+  double *T_mid_d,
+  double T,
+  double *logEG
+){
+        double T_local = T;
+        double logT = log(T_local);
+        double invT = 1.0 / T_local;
+        double T2 = T_local * T_local;
+        double T3 = T2 * T_local;
+        double T4 = T3 * T_local;
+
+        double smh_low, smh_high, smh;
+
+        int i = species_idx;
+        smh_low = smh_coef_d[i*14 + 0] + smh_coef_d[i*14 + 1] * logT
+                + smh_coef_d[i*14 + 2] * T_local
+                + smh_coef_d[i*14 + 3] * T2
+                + smh_coef_d[i*14 + 4] * T3
+                + smh_coef_d[i*14 + 5] * T4
+                + smh_coef_d[i*14 + 6] * invT;
+
+        smh_high = smh_coef_d[i*14 + 7] + smh_coef_d[i*14 + 8] * logT
+                 + smh_coef_d[i*14 + 9] * T_local
+                 + smh_coef_d[i*14 + 10] * T2
+                 + smh_coef_d[i*14 + 11] * T3
+                 + smh_coef_d[i*14 + 12] * T4
+                 + smh_coef_d[i*14 + 13] * invT;
+
+        smh = smh_low + (smh_high - smh_low) * 0.5 * (1 + copysign(1.0, T_local - T_mid_d[i]));
+        logEG[i*ng + idx] = smh;
+}
+
+
+__device__ inline void compute_logEG_transpose_single_species(
+  int ng,
+  int idx,
+  int species_idx,
+  double *smh_coef_d,
+  double *T_mid_d,
+  double *T,
+  double *logEG
+){
+        double T_local = T[idx];
+        double logT = log(T_local);
+        double invT = 1.0 / T_local;
+        double T2 = T_local * T_local;
+        double T3 = T2 * T_local;
+        double T4 = T3 * T_local;
+
+        double smh_low, smh_high, smh;
+
+        int i = species_idx;
+        smh_low = smh_coef_d[i*14 + 0] + smh_coef_d[i*14 + 1] * logT
+                + smh_coef_d[i*14 + 2] * T_local
+                + smh_coef_d[i*14 + 3] * T2
+                + smh_coef_d[i*14 + 4] * T3
+                + smh_coef_d[i*14 + 5] * T4
+                + smh_coef_d[i*14 + 6] * invT;
+
+        smh_high = smh_coef_d[i*14 + 7] + smh_coef_d[i*14 + 8] * logT
+                 + smh_coef_d[i*14 + 9] * T_local
+                 + smh_coef_d[i*14 + 10] * T2
+                 + smh_coef_d[i*14 + 11] * T3
+                 + smh_coef_d[i*14 + 12] * T4
+                 + smh_coef_d[i*14 + 13] * invT;
+
+        smh = smh_low + (smh_high - smh_low) * 0.5 * (1 + copysign(1.0, T_local - T_mid_d[i]));
+        logEG[idx*NSP_SK + i] = smh;
+}
+
+#endif

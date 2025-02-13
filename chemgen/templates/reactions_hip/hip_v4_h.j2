@@ -1,0 +1,34 @@
+#ifndef GETRATES_HIP_V4_H
+#define GETRATES_HIP_V4_H
+
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h> 
+#include <rocblas/rocblas.h>
+#include <stdlib.h>
+
+
+//From https://github.com/ROCm/rocBLAS-Examples
+#ifndef CHECK_ROCBLAS_STATUS
+#define CHECK_ROCBLAS_STATUS(status)                  \
+    if(status != rocblas_status_success)              \
+    {                                                 \
+        fprintf(stderr, "rocBLAS error: ");           \
+        fprintf(stderr,                               \
+                "rocBLAS error: '%s'(%d) at %s:%d\n", \
+                rocblas_status_to_string(status),     \
+                status,                               \
+                __FILE__,                             \
+                __LINE__);                            \
+        exit(EXIT_FAILURE);                           \
+    }
+#endif
+
+extern "C" void getrates_hip_wrapper_v4(double* P,
+                                        double* Temp,
+                                        int ng,
+                                        double* Ysp,
+                                        double* WDOT_RR,
+                                        double* logEG_d,
+                                        double* logC_d);
+
+#endif

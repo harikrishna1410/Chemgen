@@ -1,0 +1,1216 @@
+#include "getrates_device_functions.h"
+#include "getrates_hip_v3.h"
+// #include "constants_v3.h"
+
+#define LDS
+#define NO_TRANSPOSE
+#define FUSE_EG_C
+#define USE_TROE
+#define USE_THREE_BODY
+
+static __global__ void rdot_merge_kernel(int ng,
+                                        double* Temp,
+                                        double* logEG,
+                                        double* logC,
+                                        double* wdot_rr) {
+    
+    // Shared memory declarations
+    __shared__ volatile double work[VECLEN*NSP_PER_BLOCK*NREACT_PER_BLOCK];
+    __shared__ double wdot_s[VECLEN*NSP_RED];
+    __shared__ volatile double ALOG_C_s[VECLEN*NSP_RED], ALOG_EG_s[VECLEN*NSP_SK];
+
+    int idx_g, rnum, idx_l, rnum_g;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, ALOG_PFAC;
+    double ST_COEF_SUM,M,T;
+    int rblk, myspec, L, idx;
+
+    int slice_dim = NSP_PER_BLOCK * NREACT_PER_BLOCK;
+    int slice_id = blockDim.x * threadIdx.y + threadIdx.x;
+
+    idx_l = threadIdx.z;
+    idx_g = blockIdx.x * VECLEN + idx_l;
+    rnum = threadIdx.y;
+    myspec = threadIdx.x;
+    int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;
+
+    // Transpose logC and logEG
+	for (L=0; L<NSP_RED/slice_dim; L++){
+	    ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+	}
+	if (L*slice_dim + slice_id < NSP_RED) {
+	    ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+	}
+	for (L=0; L<NSP_SK/slice_dim; L++){
+	    ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+	}
+	if (L*slice_dim + slice_id < NSP_SK) {
+	    ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+	}
+	for (L=0; L<NSP_RED/slice_dim; L++){
+	    wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+	}
+	if (L*slice_dim + slice_id < NSP_RED) {
+	    wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+	}
+    __syncthreads();
+
+    T = Temp[idx_g];
+    ALOG_T = log(Temp[idx_g]);
+    TI = 1.0 / Temp[idx_g];
+    ALOG_PFAC = log(PATM / (RU * Temp[idx_g]));
+
+    for (rblk=0; rblk<NREACT_STD/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+           
+         
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                     sk_coef_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        // // Get forward constant
+        ALOG_RF = ALOG_T*B_d[rnum_g*2] + B_d[rnum_g*2 + 1]*TI + A_d[rnum_g];
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        ALOG_RF = ALOG_RF + work[tid];
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                        coef_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+        ALOG_RB = ALOG_RB + work[tid];
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        // Compute wdot (lot of divergence here!)
+        if(myspec == 0){
+            compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_d,
+                         coef_r_d,
+                         map_p_d,
+                         coef_p_d,
+                         RR, 
+                         wdot_s);
+        }
+        __syncthreads();
+    }
+#ifdef USE_THREE_BODY
+    for (rblk=0; rblk<NREACT_THIRD/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+           
+         
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                     sk_coef_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        // // Get forward constant
+        ALOG_RF = ALOG_T*B_third_d[rnum_g*2] + B_third_d[rnum_g*2 + 1]*TI + A_third_d[rnum_g];
+        M=0.0;
+        for(L=0; L<NSP_RED; L++) {
+            M += exp(ALOG_C_s[idx_l*NSP_RED + L]) * eff_fac_third_d[rnum_g*NSP_RED + L];
+        }
+        ALOG_RF += log(M);
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_third_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        ALOG_RF = ALOG_RF + work[tid];
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                        coef_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+        ALOG_RB = ALOG_RB + work[tid];
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        // Compute wdot (lot of divergence here!)
+        if(myspec == 0){
+            compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_third_d,
+                         coef_r_third_d,
+                         map_p_third_d,
+                         coef_p_third_d,
+                         RR, 
+                         wdot_s);
+        }
+        __syncthreads();
+    }
+#endif
+#ifdef USE_TROE
+    double log10_fcent,log10_pr,log10_f;
+    double LOG10 = log(10);
+    for (rblk=0; rblk<NREACT_TROE/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+           
+         
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                     sk_coef_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        // Compute log_fcent first since we need it multiple times
+        log10_fcent = log10(fcent_coef_troe_d[rnum_g*6]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 1]) + 
+                            fcent_coef_troe_d[rnum_g*6 + 2]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 3]) + 
+                            fcent_coef_troe_d[rnum_g*6 + 4]*exp(-fcent_coef_troe_d[rnum_g*6 + 5]/T));
+
+        // // Get forward constant
+        ALOG_RF = ALOG_T*B_inf_troe_d[rnum_g*2] + B_inf_troe_d[rnum_g*2 + 1]*TI + A_inf_troe_d[rnum_g];
+        log10_pr = ALOG_T*B_0_troe_d[rnum_g*2] + B_0_troe_d[rnum_g*2 + 1]/T + A_0_troe_d[rnum_g] - ALOG_RF;
+        M=0.0;
+        for(L=0; L<NSP_RED; L++) {
+            M += exp(ALOG_C_s[idx_l*NSP_RED + L]) * eff_fac_troe_d[rnum_g*NSP_RED + L];
+        }
+        log10_pr += log(M);
+        log10_pr /= LOG10;
+
+        log10_f = (-0.67*log10_fcent + log10_pr - 0.4) / (-1.1762*log10_fcent - 0.14*log10_pr + 0.806);
+        log10_f = log10_fcent/(1.0 + log10_f*log10_f);
+
+        ALOG_RF += LOG10*(log10_pr + log10_f) - log1p(exp(LOG10*log10_pr));
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_troe_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+
+        ALOG_RF = ALOG_RF + work[tid];
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                        coef_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        //correct values are only on myspec==0
+        // work[tid] = work[(tid/NSP_PER_BLOCK)*NSP_PER_BLOCK];
+        ALOG_RB = ALOG_RB + work[tid];
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        // Compute wdot (lot of divergence here!)
+        if(myspec == 0){
+            compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_troe_d,
+                         coef_r_troe_d,
+                         map_p_troe_d,
+                         coef_p_troe_d,
+                         RR, 
+                         wdot_s);
+        }
+        __syncthreads();
+    }
+#endif
+    // Transpose wdot_s to wdot_rr
+    for(L=0; L<NSP_RED/slice_dim; L++){
+        wdot_rr[idx_g + (L*slice_dim + slice_id)*ng] = 
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)];
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        wdot_rr[idx_g + (L*slice_dim + slice_id)*ng] = 
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)];
+    }
+}
+
+
+static __global__ void rdot_merge_kernel_no_lds(int ng,
+                                        double* Temp,
+                                        double* logEG,
+                                        double* logC,
+                                        double* wdot_rr) {
+    
+    // Shared memory declarations
+    __shared__ volatile double work[VECLEN*NSP_PER_BLOCK*NREACT_PER_BLOCK];
+
+    int idx_g, rnum, idx_l, rnum_g;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, ALOG_PFAC;
+    double ST_COEF_SUM,M,T;
+    int rblk, myspec, L, idx;
+
+    int slice_dim = NSP_PER_BLOCK * NREACT_PER_BLOCK;
+    int slice_id = blockDim.x * threadIdx.y + threadIdx.x;
+
+    idx_l = threadIdx.z;
+    idx_g = blockIdx.x * VECLEN + idx_l;
+    rnum = threadIdx.y;
+    myspec = threadIdx.x;
+    int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;
+
+    T = Temp[idx_g];
+    ALOG_T = log(Temp[idx_g]);
+    TI = 1.0 / Temp[idx_g];
+    ALOG_PFAC = log(PATM / (RU * Temp[idx_g]));
+
+    for (rblk=0; rblk<NREACT_STD/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+        
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= logEG[idx_g + sk_map_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]*ng] * 
+                     sk_coef_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        // Get forward constant
+        ALOG_RF = ALOG_T*B_d[rnum_g*2] + B_d[rnum_g*2 + 1]*TI + A_d[rnum_g];
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                    coef_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RF = ALOG_RF + work[tid];
+        
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                        coef_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RB = ALOG_RB + work[tid];
+        
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        
+        // Compute wdot
+        if(myspec == 0){
+            compute_wdot_atomic_no_transpose(
+                         ng,
+                         idx_g,
+                         rnum_g,
+                         map_r_d,
+                         coef_r_d,
+                         map_p_d,
+                         coef_p_d,
+                         RR, 
+                         wdot_rr);
+        }
+        __syncthreads();
+    }
+
+#ifdef USE_THREE_BODY
+    for (rblk=0; rblk<NREACT_THIRD/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+        
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= logEG[idx_g + sk_map_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]*ng] * 
+                     sk_coef_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        // Get forward constant
+        ALOG_RF = ALOG_T*B_third_d[rnum_g*2] + B_third_d[rnum_g*2 + 1]*TI + A_third_d[rnum_g];
+        
+        // Calculate third body concentration
+        M = 0.0;
+        for(L=0; L<NSP_RED; L++) {
+            M += exp(logC[idx_g + L*ng]) * eff_fac_third_d[rnum_g*NSP_RED + L];
+        }
+        ALOG_RF += log(M);
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_third_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                    coef_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RF = ALOG_RF + work[tid];
+        
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                        coef_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RB = ALOG_RB + work[tid];
+        
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        
+        // Compute wdot
+        if(myspec == 0){
+            compute_wdot_atomic_no_transpose(
+                         ng,
+                         idx_g,
+                         rnum_g,
+                         map_r_third_d,
+                         coef_r_third_d,
+                         map_p_third_d,
+                         coef_p_third_d,
+                         RR, 
+                         wdot_rr);
+        }
+        __syncthreads();
+    }
+#endif
+
+#ifdef USE_TROE
+    double log10_fcent,log10_pr,log10_f;
+    double LOG10 = log(10);
+    for (rblk=0; rblk<NREACT_TROE/NREACT_PER_BLOCK; rblk++) {
+        rnum_g = rblk*NREACT_PER_BLOCK + rnum;
+        
+        // Get backward constant
+        work[tid] = 0.0;
+        for (L = 0; L < SP2_PER_THREAD; L++) {
+            work[tid] -= logEG[idx_g + sk_map_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]*ng] * 
+                     sk_coef_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        // Warp level reduction
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        // Compute log_fcent first since we need it multiple times
+        log10_fcent = log10(fcent_coef_troe_d[rnum_g*6]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 1]) + 
+                            fcent_coef_troe_d[rnum_g*6 + 2]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 3]) + 
+                            fcent_coef_troe_d[rnum_g*6 + 4]*exp(-fcent_coef_troe_d[rnum_g*6 + 5]/T));
+
+        // // Get forward constant
+        ALOG_RF = ALOG_T*B_inf_troe_d[rnum_g*2] + B_inf_troe_d[rnum_g*2 + 1]*TI + A_inf_troe_d[rnum_g];
+        log10_pr = ALOG_T*B_0_troe_d[rnum_g*2] + B_0_troe_d[rnum_g*2 + 1]*TI + A_0_troe_d[rnum_g] - ALOG_RF;
+        M=0.0;
+        for(L=0; L<NSP_RED; L++) {
+            M += exp(logC[idx_g + L*ng]) * eff_fac_troe_d[rnum_g*NSP_RED + L];
+        }
+        log10_pr += log(M);
+        log10_pr /= LOG10;
+
+        log10_f = (-0.67*log10_fcent + log10_pr - 0.4) / (-1.1762*log10_fcent - 0.14*log10_pr + 0.806);
+        log10_f = log10_fcent/(1.0 + log10_f*log10_f);
+
+        ALOG_RF += LOG10*(log10_pr + log10_f) - log1p(exp(LOG10*log10_pr));
+
+        // Add pfac and update RF and RB
+        ALOG_RB = work[tid] + ALOG_RF;
+    
+        ST_COEF_SUM = 0;
+        for (L = 0; L < MAX_SP2; L++) {
+            ST_COEF_SUM += sk_coef_troe_d[rnum_g*MAX_SP2 + L];
+        }
+        ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+        // Get forward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                    coef_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RF = ALOG_RF + work[tid];
+        
+        // Get backward rate
+        work[tid] = 0.0;
+        for (L=0; L<SP_PER_THREAD; L++){  
+            work[tid] += logC[idx_g + map_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]*ng] * 
+                        coef_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+        }
+        __syncthreads();
+        
+        idx = NSP_PER_BLOCK/2;
+        while(idx > 0){
+            work[tid] = work[tid] + work[tid+idx];
+            idx = idx/2;
+        }
+
+        ALOG_RB = ALOG_RB + work[tid];
+        
+        // Get net reaction rate
+        RR = exp(ALOG_RF) - exp(ALOG_RB);
+        
+        // Compute wdot
+        if(myspec == 0){
+            compute_wdot_atomic_no_transpose(
+                         ng,
+                         idx_g,
+                         rnum_g,
+                         map_r_troe_d,
+                         coef_r_troe_d,
+                         map_p_troe_d,
+                         coef_p_troe_d,
+                         RR, 
+                         wdot_rr);
+        }
+        __syncthreads();
+    }
+#endif
+}
+
+        
+static __global__ void rdot_merge_kernel_multi_block_standard(int ng,
+                                        double* Temp,
+                                        double* logEG,
+                                        double* logC,
+                                        double* wdot_rr) {
+    
+    // Shared memory declarations
+    __shared__ volatile double work[VECLEN*NSP_PER_BLOCK*NREACT_PER_BLOCK];
+    __shared__ double wdot_s[VECLEN*NSP_RED];
+    __shared__ volatile double ALOG_C_s[VECLEN*NSP_RED], ALOG_EG_s[VECLEN*NSP_SK];
+
+    int idx_g, rnum, idx_l, rnum_g;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, ALOG_PFAC;
+    double ST_COEF_SUM,T;
+    int myspec, L, idx;
+
+    int slice_dim = NSP_PER_BLOCK * NREACT_PER_BLOCK;
+    int slice_id = blockDim.x * threadIdx.y + threadIdx.x;
+
+    idx_l = threadIdx.z;
+    idx_g = blockIdx.y * VECLEN + idx_l;
+    rnum = threadIdx.y;
+    rnum_g = blockIdx.x * NREACT_PER_BLOCK + rnum;
+    myspec = threadIdx.x;
+    int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;
+
+    // Transpose logC and logEG
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_SK/slice_dim; L++){
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_SK) {
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    __syncthreads();
+
+    T = Temp[idx_g];
+    ALOG_T = log(Temp[idx_g]);
+    TI = 1.0 / Temp[idx_g];
+    ALOG_PFAC = log(PATM / (RU * Temp[idx_g]));
+           
+    // Get backward constant
+    work[tid] = 0.0;
+    for (L = 0; L < SP2_PER_THREAD; L++) {
+        work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                 sk_coef_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    // Warp level reduction
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    // Get forward constant
+    ALOG_RF = ALOG_T*B_d[rnum_g*2] + B_d[rnum_g*2 + 1]*TI + A_d[rnum_g];
+
+    // Add pfac and update RF and RB
+    ALOG_RB = work[tid] + ALOG_RF;
+    
+    ST_COEF_SUM = 0;
+    for (L = 0; L < MAX_SP2; L++) {
+        ST_COEF_SUM += sk_coef_d[rnum_g*MAX_SP2 + L];
+    }
+    ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+    // Get forward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                coef_r_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RF = ALOG_RF + work[tid];
+    
+    // Get backward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_p_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RB = ALOG_RB + work[tid];
+    
+    // Get net reaction rate
+    RR = exp(ALOG_RF) - exp(ALOG_RB);
+    
+    // Compute wdot
+    if(myspec == 0){
+        compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_d,
+                         coef_r_d,
+                         map_p_d,
+                         coef_p_d,
+                         RR, 
+                         wdot_s);
+    }
+    __syncthreads();
+
+    // Transpose wdot_s to wdot_rr
+    for(L=0; L<NSP_RED/slice_dim; L++){
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+}
+
+static __global__ void rdot_merge_kernel_multi_block_three_body(int ng,
+                                        double* Temp,
+                                        double* logEG,
+                                        double* logC,
+                                        double* wdot_rr) {
+    
+    // Shared memory declarations
+    __shared__ volatile double work[VECLEN*NSP_PER_BLOCK*NREACT_PER_BLOCK];
+    __shared__ double wdot_s[VECLEN*NSP_RED];
+    __shared__ volatile double ALOG_C_s[VECLEN*NSP_RED], ALOG_EG_s[VECLEN*NSP_SK];
+
+    int idx_g, rnum, idx_l, rnum_g;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, ALOG_PFAC;
+    double ST_COEF_SUM,M,T;
+    int myspec, L, idx;
+
+    int slice_dim = NSP_PER_BLOCK * NREACT_PER_BLOCK;
+    int slice_id = blockDim.x * threadIdx.y + threadIdx.x;
+
+    idx_l = threadIdx.z;
+    idx_g = blockIdx.y * VECLEN + idx_l;
+    rnum = threadIdx.y;
+    rnum_g = blockIdx.x * NREACT_PER_BLOCK + rnum;
+    myspec = threadIdx.x;
+    int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;
+
+    // Transpose logC and logEG
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_SK/slice_dim; L++){
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_SK) {
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    __syncthreads();
+
+    T = Temp[idx_g];
+    ALOG_T = log(Temp[idx_g]);
+    TI = 1.0 / Temp[idx_g];
+    ALOG_PFAC = log(PATM / (RU * Temp[idx_g]));
+           
+    // Get backward constant
+    work[tid] = 0.0;
+    for (L = 0; L < SP2_PER_THREAD; L++) {
+        work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                 sk_coef_third_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    // Warp level reduction
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    // Get forward constant
+    ALOG_RF = ALOG_T*B_third_d[rnum_g*2] + B_third_d[rnum_g*2 + 1]*TI + A_third_d[rnum_g];
+    M=0.0;
+    for(L=0; L<NSP_RED; L++) {
+        M += exp(ALOG_C_s[idx_l*NSP_RED + L]) * eff_fac_third_d[rnum_g*NSP_RED + L];
+    }
+    ALOG_RF += log(M);
+
+    // Add pfac and update RF and RB
+    ALOG_RB = work[tid] + ALOG_RF;
+    
+    ST_COEF_SUM = 0;
+    for (L = 0; L < MAX_SP2; L++) {
+        ST_COEF_SUM += sk_coef_third_d[rnum_g*MAX_SP2 + L];
+    }
+    ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+    // Get forward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_r_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RF = ALOG_RF + work[tid];
+    
+    // Get backward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_p_third_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RB = ALOG_RB + work[tid];
+    
+    // Get net reaction rate
+    RR = exp(ALOG_RF) - exp(ALOG_RB);
+    
+    // Compute wdot
+    if(myspec == 0){
+        compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_third_d,
+                         coef_r_third_d,
+                         map_p_third_d,
+                         coef_p_third_d,
+                         RR, 
+                         wdot_s);
+    }
+    __syncthreads();
+
+    // Transpose wdot_s to wdot_rr
+    for(L=0; L<NSP_RED/slice_dim; L++){
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+}
+
+static __global__ void rdot_merge_kernel_multi_block_troe(int ng,
+                                        double* Temp,
+                                        double* logEG,
+                                        double* logC,
+                                        double* wdot_rr) {
+    
+    // Shared memory declarations
+    __shared__ volatile double work[VECLEN*NSP_PER_BLOCK*NREACT_PER_BLOCK];
+    __shared__ double wdot_s[VECLEN*NSP_RED];
+    __shared__ volatile double ALOG_C_s[VECLEN*NSP_RED], ALOG_EG_s[VECLEN*NSP_SK];
+
+    int idx_g, rnum, idx_l, rnum_g;
+    double ALOG_RF, ALOG_RB, RR, ALOG_T, TI, ALOG_PFAC;
+    double ST_COEF_SUM,M,T;
+    int myspec, L, idx;
+    double log10_fcent,log10_pr,log10_f;
+    double LOG10 = log(10);
+
+    int slice_dim = NSP_PER_BLOCK * NREACT_PER_BLOCK;
+    int slice_id = blockDim.x * threadIdx.y + threadIdx.x;
+
+    idx_l = threadIdx.z;
+    idx_g = blockIdx.y * VECLEN + idx_l;
+    rnum = threadIdx.y;
+    rnum_g = blockIdx.x * NREACT_PER_BLOCK + rnum;
+    myspec = threadIdx.x;
+    int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;
+
+    // Transpose logC and logEG
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        ALOG_C_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = logC[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_SK/slice_dim; L++){
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    if (L*slice_dim + slice_id < NSP_SK) {
+        ALOG_EG_s[idx_l*NSP_SK + (L*slice_dim + slice_id)] = logEG[idx_g + (L*slice_dim + slice_id)*ng];
+    }
+    for (L=0; L<NSP_RED/slice_dim; L++){
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)] = 0.0;
+    }
+    __syncthreads();
+
+    T = Temp[idx_g];
+    ALOG_T = log(Temp[idx_g]);
+    TI = 1.0 / Temp[idx_g];
+    ALOG_PFAC = log(PATM / (RU * Temp[idx_g]));
+           
+    // Get backward constant
+    work[tid] = 0.0;
+    for (L = 0; L < SP2_PER_THREAD; L++) {
+        work[tid] -= ALOG_EG_s[idx_l*NSP_SK + sk_map_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L]] * 
+                     sk_coef_troe_d[rnum_g*MAX_SP2 + SP2_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    // Warp level reduction
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    // Compute log_fcent first since we need it multiple times
+    log10_fcent = log10(fcent_coef_troe_d[rnum_g*6]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 1]) + 
+                        fcent_coef_troe_d[rnum_g*6 + 2]*exp(-T/fcent_coef_troe_d[rnum_g*6 + 3]) + 
+                        fcent_coef_troe_d[rnum_g*6 + 4]*exp(-fcent_coef_troe_d[rnum_g*6 + 5]/T));
+
+    // Get forward constant
+    ALOG_RF = ALOG_T*B_inf_troe_d[rnum_g*2] + B_inf_troe_d[rnum_g*2 + 1]*TI + A_inf_troe_d[rnum_g];
+    log10_pr = ALOG_T*B_0_troe_d[rnum_g*2] + B_0_troe_d[rnum_g*2 + 1]/T + A_0_troe_d[rnum_g] - ALOG_RF;
+    M=0.0;
+    for(L=0; L<NSP_RED; L++) {
+        M += exp(ALOG_C_s[idx_l*NSP_RED + L]) * eff_fac_troe_d[rnum_g*NSP_RED + L];
+    }
+    log10_pr += log(M);
+    log10_pr /= LOG10;
+
+    log10_f = (-0.67*log10_fcent + log10_pr - 0.4) / (-1.1762*log10_fcent - 0.14*log10_pr + 0.806);
+    log10_f = log10_fcent/(1.0 + log10_f*log10_f);
+
+    ALOG_RF += LOG10*(log10_pr + log10_f) - log1p(exp(LOG10*log10_pr));
+
+    // Add pfac and update RF and RB
+    ALOG_RB = work[tid] + ALOG_RF;
+    
+    ST_COEF_SUM = 0;
+    for (L = 0; L < MAX_SP2; L++) {
+        ST_COEF_SUM += sk_coef_troe_d[rnum_g*MAX_SP2 + L];
+    }
+    ALOG_RB = ALOG_RB - ALOG_PFAC*ST_COEF_SUM;
+
+    // Get forward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_r_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RF = ALOG_RF + work[tid];
+    
+    // Get backward rate
+    work[tid] = 0.0;
+    for (L=0; L<SP_PER_THREAD; L++){  
+        work[tid] += ALOG_C_s[idx_l*NSP_RED + map_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L]] * 
+                    coef_p_troe_d[rnum_g*MAX_SP + SP_PER_THREAD*myspec + L];
+    }
+    __syncthreads();
+    idx = NSP_PER_BLOCK/2;
+    while(idx > 0){
+        work[tid] = work[tid] + work[tid+idx];
+        idx = idx/2;
+    }
+
+    ALOG_RB = ALOG_RB + work[tid];
+    
+    // Get net reaction rate
+    RR = exp(ALOG_RF) - exp(ALOG_RB);
+    
+    // Compute wdot
+    if(myspec == 0){
+        compute_wdot_atomic_transpose(
+                         VECLEN,
+                         idx_l,
+                         rnum_g,
+                         map_r_troe_d,
+                         coef_r_troe_d,
+                         map_p_troe_d,
+                         coef_p_troe_d,
+                         RR, 
+                         wdot_s);
+    }
+    __syncthreads();
+
+    // Transpose wdot_s to wdot_rr
+    for(L=0; L<NSP_RED/slice_dim; L++){
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+    if (L*slice_dim + slice_id < NSP_RED) {
+        atomicAdd(&wdot_rr[idx_g + (L*slice_dim + slice_id)*ng], \
+                        wdot_s[idx_l*NSP_RED + (L*slice_dim + slice_id)]);
+    }
+}
+
+static __global__ void compute_logC_kernel(
+    int ng,
+    double *P,
+    double *T,
+    double *Y,
+    double *logC
+){
+    int idx_l = threadIdx.x;
+    int idx_g = blockIdx.x * blockDim.x + idx_l;
+
+    compute_c_no_transpose(
+        ng,
+        idx_g,
+        mw_d,
+        Y,
+        P,
+        T,
+        logC
+    );
+    for (int i=0; i < NSP_RED; i++ ){
+        logC[i*ng + idx_g] = log(max(logC[i*ng + idx_g],SMALL));
+    }
+}
+
+static __global__ void compute_logEG_kernel(
+    int ng,
+    double *T,
+    double *logEG
+){
+    int idx_l = threadIdx.x;
+    int idx_g = blockIdx.x * blockDim.x + idx_l;
+
+    compute_logEG_no_transpose(
+        ng,
+        idx_g,
+        smh_coef_d,
+        T_mid_d,
+        T,
+        logEG
+    );
+}
+
+__global__ void zero_wdot(int ng, double* wdot){
+    for(int L=0;L<NSP_RED;L++){
+        wdot[threadIdx.x + blockIdx.x*VECLEN + ng*L] = 0.0;
+    }
+}
+
+
+extern "C" void getrates_hip_wrapper_v3(double* P, \
+                                        double* Temp, \
+                                        int ng, \
+                                        double* Ysp,\
+                                        double* WDOT_RR,\
+                                        double* logEG_d,
+                                        double* logC_d) {
+
+
+    dim3 blocks, threads;
+    int L;
+
+    threads = dim3(256,1, 1);
+    blocks = dim3(ng/256, 1, 1);
+   
+    // Launch kernel to compute logC
+    hipLaunchKernelGGL(compute_logC_kernel, blocks, threads, 0, 0,
+                       ng, P, Temp, Ysp, logC_d);
+
+    // Launch kernel to compute logEG
+    hipLaunchKernelGGL(compute_logEG_kernel, blocks, threads, 0, 0,
+                       ng, Temp, logEG_d);
+
+    // Synchronize to ensure computations are complete
+    hipDeviceSynchronize();    
+
+#ifdef MULTI_BLOCK
+    threads = dim3(VECLEN, 1, 1);
+    blocks = dim3(ng / VECLEN, 1, 1);
+    hipLaunchKernelGGL(zero_wdot, blocks, threads, 0, 0, ng, WDOT_RR);
+
+    threads = dim3(NSP_PER_BLOCK,NREACT_PER_BLOCK,VECLEN);
+    blocks = dim3(NREACT_STD/NREACT_PER_BLOCK, ng/VECLEN, 1);
+   
+    hipLaunchKernelGGL(rdot_merge_kernel_multi_block_standard, blocks, threads, 0, 0,
+                   ng, Temp, logEG_d, logC_d, WDOT_RR);
+
+
+#ifdef USE_THREE_BODY
+    threads = dim3(NSP_PER_BLOCK,NREACT_PER_BLOCK,VECLEN);
+    blocks = dim3(NREACT_THIRD/NREACT_PER_BLOCK, ng/VECLEN, 1);
+   
+    hipLaunchKernelGGL(rdot_merge_kernel_multi_block_three_body, blocks, threads, 0, 0,
+                   ng, Temp, logEG_d, logC_d, WDOT_RR);
+#endif
+
+#ifdef USE_TROE
+    threads = dim3(NSP_PER_BLOCK,NREACT_PER_BLOCK,VECLEN);
+    blocks = dim3(NREACT_TROE/NREACT_PER_BLOCK, ng/VECLEN, 1);
+   
+    hipLaunchKernelGGL(rdot_merge_kernel_multi_block_troe, blocks, threads, 0, 0,
+                   ng, Temp, logEG_d, logC_d, WDOT_RR);
+#endif
+
+#elif defined(LDS)    
+    threads = dim3(NSP_PER_BLOCK,NREACT_PER_BLOCK,VECLEN);
+    blocks = dim3(ng / VECLEN, 1, 1);
+   
+    hipLaunchKernelGGL(rdot_merge_kernel, blocks, threads, 0, 0,
+                   ng, Temp, logEG_d, logC_d, WDOT_RR);
+#else
+    threads = dim3(VECLEN, 1, 1);
+    blocks = dim3(ng / VECLEN, 1, 1);
+    hipLaunchKernelGGL(zero_wdot, blocks, threads, 0, 0, ng, WDOT_RR);
+
+    threads = dim3(NSP_PER_BLOCK,NREACT_PER_BLOCK,VECLEN);
+    blocks = dim3(ng / VECLEN, 1, 1);
+   
+    hipLaunchKernelGGL(rdot_merge_kernel_no_lds, blocks, threads, 0, 0,
+                   ng, Temp, logEG_d, logC_d, WDOT_RR);
+#endif
+    hipDeviceSynchronize();
+}

@@ -1,0 +1,25 @@
+#ifndef GETRATES_HIP_V1_H
+#define GETRATES_HIP_V1_H
+#include <hip/hip_runtime.h>
+
+
+
+extern "C" void getrates_hip_wrapper_v1(double* P,\
+                                        double* Temp,\
+                                        int ng,\
+                                        double* Ysp,\
+                                        double* wdot_rr,\
+                                        double* log_eg,\
+                                        double* log_c);
+
+extern "C" void compare_host_device_constants_v1(
+    const double* A_h,
+    const double* B_h,
+    const int* sk_map_h,
+    const double* sk_coef_h,
+    const int* map_r_h,
+    const double* coef_r_h,
+    const int* map_p_h,
+    const double* coef_p_h);
+
+#endif

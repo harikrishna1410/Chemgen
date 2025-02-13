@@ -1,18 +1,7 @@
 !========================================================================================
 !#define NO_GETRATES
 program test_chemgen
-
-{#
-#ifdef HIP_CHEM_V4
-    use coef_m_v4
-#elif HIP_CHEM_V3
-    use coef_m_v3
-#elif HIP_CHEM_V2
-    use coef_m_v2
-#elif HIP_CHEM_V1
-    use coef_m_v1
-#endif
-#}
+    use chemgen_m
     implicit none
     integer io          !output io unit
     integer L,m
@@ -28,164 +17,11 @@ program test_chemgen
     real(kind=8),dimension(:),allocatable :: T,P
     real(kind=8),dimension(:,:),allocatable :: Ysp
     real(kind=8),allocatable,dimension(:,:) :: wdot_cpu,wdot_gpu
-    real(kind=8),allocatable,dimension(:,:) :: C,EG
-    real(kind=8),allocatable,dimension(:) :: CTOT
     real(kind=8) :: start_time_hip, end_time_hip
     real(kind=8) :: cpu_cost_time(2),gpu_cost_time(2)
-    real(kind=8) :: ickwrk(10), rckwrk(10)
-
-    {# ! Interface for getrates_hip_wrapper_v1
-    interface
-#ifdef HIP_CHEM_V4
-    !rocblas implementation
-    subroutine getrates_hip_wrapper_v4(P, Temp, ng, Ysp, ickwrk, rckwrk, WDOT_RR, log_eg_gpu,log_c_gpu) bind(C, name="getrates_hip_wrapper_v4")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: P(*)
-        real(c_double), intent(in) :: Temp(*)
-        integer(c_int), value, intent(in) :: ng
-        real(c_double), intent(in) :: Ysp(*)
-        integer(c_int), intent(in) :: ickwrk(*)
-        real(c_double), intent(in) :: rckwrk(*)
-        real(c_double), intent(out) :: WDOT_RR(*)
-        real(c_double), intent(in) :: log_eg_gpu(*)
-        real(c_double), intent(in) :: log_c_gpu(*)
-    end subroutine getrates_hip_wrapper_v4
-#elif HIP_CHEM_V3
-    !third level of parallelisation
-    subroutine getrates_hip_wrapper_v3(P, Temp, ng, Ysp, ickwrk, rckwrk, WDOT_RR, log_eg_gpu,log_c_gpu) bind(C, name="getrates_hip_wrapper_v3")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: P(*)
-        real(c_double), intent(in) :: Temp(*)
-        integer(c_int), value, intent(in) :: ng
-        real(c_double), intent(in) :: Ysp(*)
-        integer(c_int), intent(in) :: ickwrk(*)
-        real(c_double), intent(in) :: rckwrk(*)
-        real(c_double), intent(out) :: WDOT_RR(*)
-        real(c_double), intent(in) :: log_eg_gpu(*)
-        real(c_double), intent(in) :: log_c_gpu(*)
-    end subroutine getrates_hip_wrapper_v3
-#elif HIP_CHEM_V2
-!second level of parallelisation
-    subroutine getrates_hip_wrapper_v2(P, Temp, ng, Ysp, ickwrk, rckwrk, WDOT_RR, log_eg_gpu, log_c_gpu) bind(C, name="getrates_hip_wrapper_v2")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: P(*)
-        real(c_double), intent(in) :: Temp(*)
-        integer(c_int), value, intent(in) :: ng
-        real(c_double), intent(in) :: Ysp(*)
-        integer(c_int), intent(in) :: ickwrk(*)
-        real(c_double), intent(in) :: rckwrk(*)
-        real(c_double), intent(out) :: WDOT_RR(*)
-        real(c_double), intent(in) :: log_eg_gpu(*)
-        real(c_double), intent(in) :: log_c_gpu(*)
-    end subroutine getrates_hip_wrapper_v2
-#elif HIP_CHEM_V1
-!first level of parallelisation
-    subroutine getrates_hip_wrapper_v1(P, Temp, ng, Ysp, ickwrk, rckwrk, WDOT_RR, log_eg_gpu, log_c_gpu) bind(C, name="getrates_hip_wrapper_v1")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: P(*)
-        real(c_double), intent(in) :: Temp(*)
-        integer(c_int), value, intent(in) :: ng
-        real(c_double), intent(in) :: Ysp(*)
-        integer(c_int), intent(in) :: ickwrk(*)
-        real(c_double), intent(in) :: rckwrk(*)
-        real(c_double), intent(out) :: WDOT_RR(*)
-        real(c_double), intent(in) :: log_eg_gpu(*)
-        real(c_double), intent(in) :: log_c_gpu(*)
-    end subroutine getrates_hip_wrapper_v1
-#endif
-
-#if defined(HIP_CHEM_V3) || defined(HIP_CHEM_V2) || defined(HIP_CHEM_V1)
-    subroutine copyConstantsToDevice(A_h, B_h, sk_map_h, sk_coef_h, map_r_h, coef_r_h, &
-                                    map_p_h, coef_p_h, A_0_troe_h, B_0_troe_h, A_inf_troe_h, &
-                                    B_inf_troe_h, sk_map_troe_h, sk_coef_troe_h, map_r_troe_h, &
-                                    coef_r_troe_h, map_p_troe_h, coef_p_troe_h, eff_fac_troe_h, fcent_coef_troe_h,&
-                                    A_third_h, B_third_h, sk_map_third_h, sk_coef_third_h, &
-                                    map_r_third_h, coef_r_third_h, map_p_third_h, coef_p_third_h, &
-                                    eff_fac_third_h, mw_h, smh_coef_h, T_mid_h) bind(C, name="copyConstantsToDevice")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: A_h(*)
-        real(c_double), intent(in) :: B_h(*)
-        integer(c_int), intent(in) :: sk_map_h(*)
-        real(c_double), intent(in) :: sk_coef_h(*)
-        integer(c_int), intent(in) :: map_r_h(*)
-        real(c_double), intent(in) :: coef_r_h(*)
-        integer(c_int), intent(in) :: map_p_h(*)
-        real(c_double), intent(in) :: coef_p_h(*)
-        real(c_double), intent(in) :: A_0_troe_h(*)
-        real(c_double), intent(in) :: B_0_troe_h(*)
-        real(c_double), intent(in) :: A_inf_troe_h(*)
-        real(c_double), intent(in) :: B_inf_troe_h(*)
-        integer(c_int), intent(in) :: sk_map_troe_h(*)
-        real(c_double), intent(in) :: sk_coef_troe_h(*)
-        integer(c_int), intent(in) :: map_r_troe_h(*)
-        real(c_double), intent(in) :: coef_r_troe_h(*)
-        integer(c_int), intent(in) :: map_p_troe_h(*)
-        real(c_double), intent(in) :: coef_p_troe_h(*)
-        real(c_double), intent(in) :: eff_fac_troe_h(*)
-        real(c_double), intent(in) :: fcent_coef_troe_h(*)
-        real(c_double), intent(in) :: A_third_h(*)
-        real(c_double), intent(in) :: B_third_h(*)
-        integer(c_int), intent(in) :: sk_map_third_h(*)
-        real(c_double), intent(in) :: sk_coef_third_h(*)
-        integer(c_int), intent(in) :: map_r_third_h(*)
-        real(c_double), intent(in) :: coef_r_third_h(*)
-        integer(c_int), intent(in) :: map_p_third_h(*)
-        real(c_double), intent(in) :: coef_p_third_h(*)
-        real(c_double), intent(in) :: eff_fac_third_h(*)
-        real(c_double), intent(in) :: mw_h(*)
-        real(c_double), intent(in) :: smh_coef_h(*)
-        real(c_double), intent(in) :: T_mid_h(*)
-    end subroutine copyConstantsToDevice
-#elif HIP_CHEM_V4
-    subroutine copyConstantsToDevice(A_h, B_h, sk_coef_h, coef_r_h, coef_p_h, wdot_coef_h,&
-                                    A_0_troe_h, B_0_troe_h, A_inf_troe_h, B_inf_troe_h, sk_coef_troe_h,&
-                                    coef_r_troe_h, coef_p_troe_h, wdot_coef_troe_h, eff_fac_troe_h, fcent_coef_troe_h,&
-                                    A_third_h, B_third_h, sk_coef_third_h, coef_r_third_h, coef_p_third_h,&
-                                     wdot_coef_third_h, eff_fac_third_h,&
-                                     mw_h, smh_coef_h, T_mid_h) bind(C, name="copyConstantsToDevice")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        real(c_double), intent(in) :: A_h(*)
-        real(c_double), intent(in) :: B_h(*)
-        real(c_double), intent(in) :: sk_coef_h(*)
-        real(c_double), intent(in) :: coef_r_h(*)
-        real(c_double), intent(in) :: coef_p_h(*)
-        real(c_double), intent(in) :: wdot_coef_h(*)
-        real(c_double), intent(in) :: A_0_troe_h(*)
-        real(c_double), intent(in) :: B_0_troe_h(*)
-        real(c_double), intent(in) :: A_inf_troe_h(*)
-        real(c_double), intent(in) :: B_inf_troe_h(*)
-        real(c_double), intent(in) :: sk_coef_troe_h(*)
-        real(c_double), intent(in) :: coef_r_troe_h(*)
-        real(c_double), intent(in) :: coef_p_troe_h(*)
-        real(c_double), intent(in) :: wdot_coef_troe_h(*)
-        real(c_double), intent(in) :: eff_fac_troe_h(*)
-        real(c_double), intent(in) :: fcent_coef_troe_h(*)
-        real(c_double), intent(in) :: A_third_h(*)
-        real(c_double), intent(in) :: B_third_h(*)
-        real(c_double), intent(in) :: sk_coef_third_h(*)
-        real(c_double), intent(in) :: coef_r_third_h(*)
-        real(c_double), intent(in) :: coef_p_third_h(*)
-        real(c_double), intent(in) :: wdot_coef_third_h(*)
-        real(c_double), intent(in) :: eff_fac_third_h(*)
-        real(c_double), intent(in) :: mw_h(*)
-        real(c_double), intent(in) :: smh_coef_h(*)
-        real(c_double), intent(in) :: T_mid_h(*)
-    end subroutine copyConstantsToDevice
-
-    subroutine allocate_intermediate_DeviceMemory(ng) bind(C,name="allocate_intermediate_DeviceMemory")
-        use, intrinsic :: iso_c_binding
-        implicit none
-        integer(c_int), value, intent(in) :: ng
-    end subroutine allocate_intermediate_DeviceMemory
-#endif
-
-    end interface #}
+    {% if input_MW %}
+    real(kind=8),dimension(:),allocatable :: MW
+    {% endif %}
 
 !!!allocate and rand init variables
     allocate(P(ngg))
@@ -193,9 +29,9 @@ program test_chemgen
     allocate(Ysp(ngg,{{ n_species_red }}))
     allocate(wdot_cpu(ngg,{{ n_species_red }}))
     allocate(wdot_gpu(ngg,{{ n_species_red }}))
-    allocate(C(ngg,{{ n_species_red }}))
-    allocate(EG(ngg,{{ n_species_sk }}))
-    allocate(CTOT(ngg))
+    {% if input_MW %}
+    allocate(MW({{ n_species_red }}))
+    {% endif %}
 
     !!init vars
     call random_number(T)
@@ -208,18 +44,22 @@ program test_chemgen
     p = 1013250 !!1 atm in dynes/cm2
     wdot_cpu = 0.0
     wdot_gpu = 0.0
-    C = 0.0
-    EG = 0.0
-    CTOT = 0.0
+    {% if input_MW %}
+    MW = 1.0
+    {% endif %}
 
+!$omp target enter data map(to:T,P,Ysp,wdot_gpu)
+
+    !!init chemgen_m
+    call init_chemgen(1,ngg{% if input_MW %},MW{% endif %})
 !!correcteness check
-!$omp target enter data map(to:T,P,Ysp,wdot_gpu,C,EG,CTOT)
+!$omp target enter data map(to:T,P,Ysp,wdot_gpu)
     do m=1,ng
         call getrates(p(m),t(m),  &
-                      ysp(m,:),wdot_cpu(m,:))
+                      ysp(m,:),{% if input_MW %} MW, {% endif %}wdot_cpu(m,:))
     enddo
     
-    call getrates_gpu(P,T,ngg,Ysp,wdot_gpu,C,EG,CTOT)
+    call getrates_gpu(P,T, ngg, Ysp, {% if input_MW %}MW, {% endif %}wdot_gpu)
 !$omp target update from(wdot_gpu)
  
     write(*,*) "max error mu:",maxval(abs(wdot_cpu(1:ng,:)-wdot_gpu(1:ng,:)))/maxval(abs(wdot_cpu(1:ng,:))),&
@@ -228,6 +68,7 @@ program test_chemgen
         write(*,*) "cpu,gpu", wdot_cpu(1,it),wdot_gpu(1,it)
     enddo
 
+{% if time_cpu %}
 !!speed test
     call cpu_time(cpu_cost_time(2))
 !***************************************************************************************
@@ -236,30 +77,32 @@ program test_chemgen
     do it=1,nt
     do m = 1, ng, MAXVL
         nu = min(MAXVL, ng-m+1)
-        call getrates_i(P(m:m+nu-1),T(m:m+nu-1),nu,Ysp(m:m+nu-1,:),wdot_cpu(m:m+nu-1,:))
+        call getrates_i(P(m:m+nu-1), T(m:m+nu-1), nu, Ysp(m:m+nu-1,:), {% if input_MW %}MW, {% endif %}wdot_cpu(m:m+nu-1,:))
     enddo
     enddo
 !***************************************************************************************
 !****************************CPU LOOP end***********************************************
 !***************************************************************************************
     call cpu_time(cpu_cost_time(1))
+{% endif %}
     call cpu_time(gpu_cost_time(2))
 !***************************************************************************************
 !****************************GPU LOOP start*********************************************
 !***************************************************************************************
     do it=1,nt
-        call getrates_gpu(P,T,ngg,Ysp,wdot_gpu,C,EG,CTOT)
+        call getrates_gpu(P,T, ngg, Ysp, {% if input_MW %}MW, {% endif %}wdot_gpu)
     enddo
 !***************************************************************************************
 !****************************GPU LOOP end***********************************************
 !***************************************************************************************
+!$omp target exit data map(delete:T,P,Ysp,wdot_gpu)
     call cpu_time(gpu_cost_time(1))
 
+    call init_chemgen(0,ngg{% if input_MW %},MW{% endif %})
+    deallocate(P,T,Ysp,wdot_cpu,wdot_gpu{% if input_MW %},MW{% endif %})
+{% if time_cpu %}
     write(*,*) "CPU Cost (sec):",(cpu_cost_time(1) - cpu_cost_time(2))
+{% endif %}
     write(*,*) "GPU Cost (sec):",(gpu_cost_time(1) - gpu_cost_time(2))
-    write(*,*) "CPU Cost (SU):",(cpu_cost_time(1) - cpu_cost_time(2))*1.0/3600
-    write(*,*) "GPU Cost (SU):",(gpu_cost_time(1) - gpu_cost_time(2))*4.0/3600
-    write(*,*) 'SPEED UP', &
-                   (cpu_cost_time(1) - cpu_cost_time(2))/((gpu_cost_time(1) - gpu_cost_time(2))*4.0)
 
 end program test_chemgen

@@ -666,38 +666,66 @@ class chemistry_expressions:
         f.write("\n")
 
             
-def write_chemistry_mini_app(chem,dirname,ng,ncpu=64,ngpu=8,nt=100):
-    if not os.path.exists(dirname):
+    def write_chemistry_mini_app(self,dirname,ng,ncpu,ngpu,nt,input_MW,time_cpu):
         os.makedirs(dirname,exist_ok=True)
-    filename = os.path.join(dirname,"main.f90")
-    with open(filename,'w') as f:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
-        template = env.get_template('chemistry_mini_app.j2')
-        context = {
-                "ng":ng,
-                "ncpu":ncpu,
-                "ngpu":ngpu,
-                "nt":nt,
-                'n_species_red': chem.n_species_red,
-                'n_species_sk': chem.n_species_sk,
-        }
-        rendered = template.render(**context)
-        f.write(rendered.lstrip())
-        f.write("\n")
-    ##write omp gpu
-    chem_expr = chemistry_expressions(chem,omp=True,language="fortran",mod=False)
-    filename = os.path.join(dirname,"getrates_gpu.f90")
-    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
+        filename = os.path.join(dirname,"main.f90")
+        with open(filename,'w') as f:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates")))
+            template = env.get_template('chemistry_mini_app.j2')
+            context = {
+                    "ng":ng,
+                    "ncpu":ncpu,
+                    "ngpu":ngpu,
+                    "nt":nt,
+                    'n_species_red': self.chem.n_species_red,
+                    'n_species_sk': self.chem.n_species_sk,
+                    'input_MW': input_MW,
+                    'time_cpu': time_cpu
+            }
+            rendered = template.render(**context)
+            f.write(rendered.lstrip())
+            f.write("\n")
 
-    ##write scalar f90
-    chem_expr =chemistry_expressions(chem,omp=False,vec=False,language="fortran")
-    filename = os.path.join(dirname,f"getrates.f90")
-    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
-    #write vector f90
-    chem_expr =chemistry_expressions(chem,omp=False,vec=True,language="fortran")
-    filename = os.path.join(dirname,f"getrates_i.f90")
-    chem_expr.write_expressions_to_file(filename,write_rtypes_together=True)
+    def write_hip_kernels(self,dirname):
+        inc_dir = os.path.join(dirname,"include")
+        os.makedirs(inc_dir,exist_ok=True)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        env = Environment(loader=FileSystemLoader(os.path.join(current_dir, "templates","reactions_hip")))
+                        # Get the hip kernel template for this level
+        template = env.get_template(f'device_functions_h.j2')
+        # Render template with context
+        context = {}
+        rendered = template.render(**context)
+        filename = os.path.join(inc_dir, f"getrates_device_functions.h")
+        with open(filename, 'w') as f:
+            f.write(rendered.lstrip())
+            f.write("\n")
+
+        for parallel_level in [1,2,3,4]:
+            # Get the hip kernel template for this level
+            template = env.get_template(f'hip_v{parallel_level}_cpp.j2')
+            # Render template with context
+            context = {}
+            rendered = template.render(**context)
+
+            # Write rendered template to file
+            filename = os.path.join(dirname, f"getrates_hip_v{parallel_level}.cpp")
+            with open(filename, 'w') as f:
+                f.write(rendered.lstrip())
+                f.write("\n")
+
+            # Get the hip kernel template for this level
+            template = env.get_template(f'hip_v{parallel_level}_h.j2')
+            # Render template with context
+            context = {}
+            rendered = template.render(**context)
+            # Write rendered template to file
+            filename = os.path.join(inc_dir, f"getrates_hip_v{parallel_level}.h")
+            with open(filename, 'w') as f:
+                f.write(rendered.lstrip())
+                f.write("\n")
+
 
 
 ##TODO:add these after implementing automatic qssa identification
