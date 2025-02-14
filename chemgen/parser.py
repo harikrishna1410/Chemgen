@@ -58,7 +58,7 @@ class ckparser:
         if not os.path.exists(yaml_file):
             # Convert Chemkin files to YAML using ck2yaml
             if(therm_file is not None):
-                subprocess.run(['ck2yaml', '--input', ck_file, '--thermo', therm_file, '--output', yaml_file], check=True)
+                subprocess.run(['ck2yaml', '--input', ck_file, '--thermo', therm_file, '--output', yaml_file, "--permissive"], check=True)
             else:
                 subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
         

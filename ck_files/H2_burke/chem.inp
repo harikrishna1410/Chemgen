@@ -156,37 +156,24 @@ OH+OH = O+H2O						3.34E+04   2.42  -1.93E+03
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986) 
 H2+M = H+H+M						4.577E+19 -1.40  1.0438E+05
    H2/2.5/ H2O/12/
-   CO/1.9/ CO2/3.8/
-   AR/0.0/ HE/0.0/
 
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986) 
-H2+AR = H+H+AR                              	5.840E+18 -1.10  1.0438E+05
-H2+HE = H+H+HE                              	5.840E+18 -1.10  1.0438E+05
 
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986) 
 O+O+M = O2+M                                	6.165E+15 -0.50  0.000E+00
    H2/2.5/ H2O/12/
-   AR/0.0/ HE/0.0/
-   CO/1.9/ CO2/3.8/
 
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986) 
-O+O+AR = O2+AR                              	1.886E+13  0.00 -1.788E+03
-O+O+HE = O2+HE                              	1.886E+13  0.00 -1.788E+03
 
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986) 
 O+H+M = OH+M                                	4.714E+18 -1.00  0.000E+00
    H2/2.5/  H2O/12/
-   AR/0.75/ HE/0.75/
-   CO/1.9/  CO2/3.8/
 
 ! Srinivasan and Michael, Int. J. Chem. Kinetic. 38 (2006)
 ! Rate constant is for Ar with efficiencies from Michael et al., J. Phys. Chem. A, 106 (2002)
 H2O+M = H+OH+M                              	6.064E+27 -3.322 1.2079E+05
    H2/3.0/  H2O/0.0/
-   HE/1.10/ N2/2.00/
-   O2/1.5/
-! Efficiencies for CO and CO2 taken from Li et al., Int. J. Chem. Kinet. 36:566-575 (2004)
-   CO/1.9/ CO2/3.8/
+   N2/2.00/  O2/1.5/
 
 ! Srinivasan and Michael, Int. J. Chem. Kinetic. 38 (2006)
 H2O+H2O = H+OH+H2O                          	1.006E+26 -2.44  1.2018E+05
@@ -204,7 +191,7 @@ H2O+H2O = H+OH+H2O                          	1.006E+26 -2.44  1.2018E+05
 H+O2(+M) = HO2(+M)                          	4.65084E+12  0.44  0.000E+00
    LOW/6.366E+20 -1.72  5.248E+02/
    TROE/0.5  1E-30  1E+30/
-   H2/2.0/ H2O/14/ O2/0.78/ CO/1.9/ CO2/3.8/ AR/0.67/ HE/0.8/
+   H2/2.0/ H2O/14/ O2/0.78/ 
 !=================================================================================
 ! MAIN BATH GAS IS AR OR HE (comment this reaction otherwise)
 !
@@ -245,11 +232,11 @@ HO2+HO2 = H2O2+O2                           	1.300E+11  0.00 -1.6293E+03
 H2O2(+M) = OH+OH(+M)            			2.00E+12   0.90  4.8749E+04
    LOW/2.49E+24 -2.30 4.8749E+04/
    TROE/0.43 1E-30 1E+30/
-   H2O/7.5/ CO2/1.6/
+   H2O/7.5/ 
    N2/1.5/  O2/1.2/
-   HE/0.65/ H2O2/7.7/
+   H2O2/7.7/
 ! Efficiencies for H2 and CO taken from Li et al., Int. J. Chem. Kinet. 36:566-575 (2004)
-   H2/3.7/ CO/2.8/
+   H2/3.7/ 
 
 ! Tsang and Hampson, J. Phys. Chem. Ref. Data, 15:1087 (1986)
 H2O2+H = H2O+OH                             	2.410E+13  0.00  3.970E+03

@@ -14,16 +14,24 @@ find_package(HIP REQUIRED)
 find_package(rocblas REQUIRED)
 
 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -homp -hacc -eZ -hfp3")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -homp -hacc -eZ -hfp3 -s real64")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 if(DEFINED SAVE_TEMPS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps -gline-tables-only")
 endif()
 set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -O3")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/run)
 add_compile_definitions(USE_CHEMGEN_GPU)
+
 if(DEFINED PARALLEL_LEVEL)
     add_compile_definitions(HIP_CHEM_v${PARALLEL_LEVEL})
 endif()
+foreach(flag IN ITEMS LDS NO_TRANSPOSE FUSE_EG_C)
+    if(DEFINED ${flag} AND ${flag} EQUAL 1)
+        add_compile_definitions(${flag})
+    endif()
+    unset(${flag} CACHE)
+endforeach()
 # Ensure Fortran and HIP are compiled separately before linking
 if(DEFINED PARALLEL_LEVEL)
     add_library(coef_lib OBJECT src/modules/coef_m_v${PARALLEL_LEVEL}.f90)
@@ -65,4 +73,4 @@ else()
     "-L$ENV{CRAY_LIBSCI_PREFIX_DIR}/lib -lsci_cray -lm"
     )
 endif()
-
+unset(PARALLEL_LEVEL CACHE)
