@@ -36,7 +36,7 @@ for dir in ${dirs[@]};do
                 mv ../run/mini_app ../run/mini_app_hip_${PARELLEL_LEVEL}_LDS
 
 		        make clean
-                cmake -DPARALLEL_LEVEL=$PARELLEL_LEVEL -DLDS=1 -DNO_TRANSPOSE=1..
+                cmake -DPARALLEL_LEVEL=$PARELLEL_LEVEL -DLDS=1 -DNO_TRANSPOSE=1 ..
 		        make -j
                 mv ../run/mini_app ../run/mini_app_hip_${PARELLEL_LEVEL}_LDS_NO_TRANSPOSE
 
