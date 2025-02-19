@@ -8,12 +8,13 @@ if [ -z "$1" ]; then
     exit 1
 fi
 chem=$1
+chem_name=$(basename "$chem")
 
-mkdir -p mini_apps
+mkdir -p mini_apps_${chem_name}
 for ng in ${ng[@]};do
     for i in $(seq 0 3);do
         echo "veclen=${veclen[$i]} rpb=${rpb[$i]} ng=$ng"
-        dir=mini_apps/ng_${ng}_veclen_${veclen[$i]}_rpb_${rpb[$i]}
+        dir=mini_apps_${chem_name}/ng_${ng}_veclen_${veclen[$i]}_rpb_${rpb[$i]}
         mkdir -p $dir
         cp mini_app/CMakeLists.txt $dir/
         python3 generate_chemistry.py --mode mini_app --mech ${chem}/chem.inp --therm ${chem}/therm.dat --output $dir --time-cpu --ng 64 --nreact-per-block ${rpb[$i]} --veclen ${veclen[$i]} --ng $ng
