@@ -171,7 +171,7 @@ class chemistry:
         elif reaction_type == "third_body":
             dummy_reaction["third_body"] = {first_species: 0.0}
         elif reaction_type == "plog":
-            dummy_reaction["plog"] = {1: [0.0, 0.0, 0.0, 0.0]}  # [P, A, beta, Ea]
+            dummy_reaction["plog"] = [(0.0, 0.0, 0.0, 0.0)]  # [P, A, beta, Ea]
         
         self.__reactions_dict[dummy_reaction_number] = dummy_reaction
         self.__reaction_types_list[reaction_type].append(dummy_reaction_number)

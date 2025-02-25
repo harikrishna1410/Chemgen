@@ -11,23 +11,63 @@ import numpy as np
 space = " "
 R_c = 1.9872155832  # cal/mol/K
 
-def get_arh_coef_lines(r_dict, troe=False):
+def get_arh_coef_lines(r_dict, rtype):
     A_lines, B_lines, nr_calc = [], [], 0
-    for rnum, reaction in r_dict.items():
-        params = reaction["troe"]["low"] if troe else reaction["arh"]
-        A, beta, Ea = params
+    if rtype == "plog":
+        for rnum, reaction in r_dict.items():
+            params =  reaction["plog"]
+            for param in params:
+                P, A, beta, Ea = param
+                aline = f"{space}{np.log(A):21.15E},& \n".replace("E", "D")
+                bline = f"{space}{'+' if beta > 0 else '-'}{abs(beta):21.15E},".replace("E", "D")
+                bline += f"{'-' if Ea > 0 else '+'}{abs(Ea)/R_c:21.15E},&\n".replace("E", "D")
+                A_lines.append(aline)
+                B_lines.append(bline)
+            nr_calc += 1
+        return nr_calc, A_lines, B_lines
+    elif rtype == "troe":
+        A0_lines, B0_lines = [], []
+        for rnum, reaction in r_dict.items():
+            params =  reaction["arh"]
+            A, beta, Ea = params
+            aline = f"{space}{np.log(A):21.15E},& \n".replace("E", "D")
+            bline = f"{space}{'+' if beta > 0 else '-'}{abs(beta):21.15E},".replace("E", "D")
+            bline += f"{'-' if Ea > 0 else '+'}{abs(Ea)/R_c:21.15E},&\n".replace("E", "D")
+            A_lines.append(aline)
+            B_lines.append(bline)
+            ##
+            params0 = reaction["troe"]["low"]
+            A, beta, Ea = params0
+            aline = f"{space}{np.log(A):21.15E},& \n".replace("E", "D")
+            bline = f"{space}{'+' if beta > 0 else '-'}{abs(beta):21.15E},".replace("E", "D")
+            bline += f"{'-' if Ea > 0 else '+'}{abs(Ea)/R_c:21.15E},&\n".replace("E", "D")
+            A0_lines.append(aline)
+            B0_lines.append(bline)
 
-        aline = f"{space}{np.log(A):21.15E},& \n".replace("E", "D")
-        bline = f"{space}{'+' if beta > 0 else '-'}{abs(beta):21.15E},".replace("E", "D")
-        bline += f"{'-' if Ea > 0 else '+'}{abs(Ea)/R_c:21.15E},&\n".replace("E", "D")
+            nr_calc += 1
+        if len(A_lines) > 0:
+            A_lines[-1] = A_lines[-1].replace(",", "")
+            B_lines[-1] = B_lines[-1][:-3] + "&\n"
+        
+            A0_lines[-1] = A0_lines[-1].replace(",", "")
+            B0_lines[-1] = B0_lines[-1][:-3] + "&\n"
+        return nr_calc, A_lines, B_lines, A0_lines, B0_lines
+    else:
+        for rnum, reaction in r_dict.items():
+            params = reaction["troe"]["low"] if rtype=="troe" else reaction["arh"]
+            A, beta, Ea = params
 
-        A_lines.append(aline)
-        B_lines.append(bline)
-        nr_calc += 1
-    if len(A_lines) > 0:
-        A_lines[-1] = A_lines[-1].replace(",", "")
-        B_lines[-1] = B_lines[-1][:-3] + "&\n"
-    return nr_calc, A_lines, B_lines
+            aline = f"{space}{np.log(A):21.15E},& \n".replace("E", "D")
+            bline = f"{space}{'+' if beta > 0 else '-'}{abs(beta):21.15E},".replace("E", "D")
+            bline += f"{'-' if Ea > 0 else '+'}{abs(Ea)/R_c:21.15E},&\n".replace("E", "D")
+
+            A_lines.append(aline)
+            B_lines.append(bline)
+            nr_calc += 1
+        if len(A_lines) > 0:
+            A_lines[-1] = A_lines[-1].replace(",", "")
+            B_lines[-1] = B_lines[-1][:-3] + "&\n"
+        return nr_calc, A_lines, B_lines
 
 def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=None):
     if parallel_level > 1:
@@ -48,15 +88,16 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
                     print("padding mech",i)
                     chem.add_dummy_reaction(reaction_type)
         reactions = chem.get_reactions_by_type(reaction_type)
-        nr, A, B = get_arh_coef_lines(reactions)
+
+        if reaction_type == 'troe':
+            nr, A, B, A0, B0 = get_arh_coef_lines(reactions, reaction_type)
+            A0_troe_lines.extend(A0)
+            B0_troe_lines.extend(B0)
+        else:
+            nr, A, B = get_arh_coef_lines(reactions,reaction_type)
         A_lines.extend(A)
         B_lines.extend(B)
         nr_calc += nr
-
-        if reaction_type == 'troe':
-            nr_troe, A0, B0 = get_arh_coef_lines(reactions, troe=True)
-            A0_troe_lines.extend(A0)
-            B0_troe_lines.extend(B0)
         
         type_suffix = "" if reaction_type == "standard" else \
                      "_inf_troe" if reaction_type == "troe" else \
@@ -66,8 +107,8 @@ def write_arrhenius_constants(chem: chemistry,parallel_level=1,nreact_per_block=
         new_lines = add_new_array("real(kind=8)", f"B{type_suffix}_h", 2*nr, B_lines, new_lines)
 
         if(reaction_type == "troe"):
-            new_lines = add_new_array("real(kind=8)", f"A_0_troe_h", nr_troe, A0_troe_lines, new_lines)
-            new_lines = add_new_array("real(kind=8)", "B_0_troe_h", 2*nr_troe, B0_troe_lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", f"A_0_troe_h", nr, A0_troe_lines, new_lines)
+            new_lines = add_new_array("real(kind=8)", "B_0_troe_h", 2*nr, B0_troe_lines, new_lines)
 
     return new_lines
 
