@@ -17,6 +17,6 @@ for ng in ${ng[@]};do
         dir=mini_apps_${chem_name}/ng_${ng}_veclen_${veclen[$i]}_rpb_${rpb[$i]}
         mkdir -p $dir
         cp mini_app/CMakeLists.txt $dir/
-        python3 generate_chemistry.py --mode mini_app --mech ${chem}/chem.inp --therm ${chem}/therm.dat --output $dir --time-cpu --ng 64 --nreact-per-block ${rpb[$i]} --veclen ${veclen[$i]} --ng $ng
+        python3 generate_chemistry.py --mode mini_app --mech ${chem}/chem.inp --therm ${chem}/therm.dat --rtypes-together --output $dir --time-cpu --ng 64 --nreact-per-block ${rpb[$i]} --veclen ${veclen[$i]} --ng $ng
     done
 done
