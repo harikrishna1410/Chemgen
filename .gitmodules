@@ -1,0 +1,3 @@
+[submodule "ext_repo"]
+	path = ext_repo
+	url = https://github.com/jiweiqi/CollectionOfMechanisms.git
