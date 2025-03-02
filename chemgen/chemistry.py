@@ -377,14 +377,21 @@ class chemistry_expressions:
             f.write(self.exp_g_expr)
             f.write("\n")
 
+            ifdef_dict = {"troe": "TROE",
+                            "third_body": "THIRD_BODY",
+                            "plog": "PLOG"}
             if write_rtypes_together:
                 for rtype in self.chem.reaction_types:
+                    if rtype in ifdef_dict:
+                        f.write(f"#ifdef {ifdef_dict[rtype]}\n")
                     f.write(f"    ! Reaction type: {rtype}\n")
                     for reaction_number, reaction_expr in self.reaction_expressions.items():
                         if self.chem.reactions[reaction_number]["type"] == rtype:
                             f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
                             f.write(self.reaction_expressions[reaction_number])
                             f.write("\n")
+                    if rtype in ifdef_dict:
+                        f.write(f"#endif\n")
             else:
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
                     f.write(f"    ! Reaction {self.chem.reactions[reaction_number]['eqn']}\n")
@@ -422,16 +429,21 @@ class chemistry_expressions:
             f.write(self.exp_g_expr)
             f.write("\n")
 
-            rnum = 0
+            ifdef_dict = {"troe": "TROE", 
+                          "third_body": "THIRD_BODY", 
+                          "plog": "PLOG"}
             if write_rtypes_together:
-                for rtype in self.chem.reaction_types:
+                for rtype_id,rtype in enumerate(self.chem.reaction_types):
+                    rnum = 0
+                    if rnum == 0:
+                        if rtype in ifdef_dict:
+                            f.write(f"#ifdef {ifdef_dict[rtype]}\n")
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
                     f.write(f"    ! Reaction type: {rtype}\n")
                     for reaction_number, reaction_expr in self.reaction_expressions.items():
                         if self.chem.reactions[reaction_number]["type"] == rtype:
-                            if rnum == 0:
-                                f.write(omp_startdo+"\n")
-                                f.write(startdo+"\n")
-                            elif rnum%10 == 0:
+                            if rnum%10 == 0:
                                 f.write(enddo+"\n")
                                 f.write(omp_enddo+"\n")
                                 f.write(omp_startdo+"\n")
@@ -440,7 +452,12 @@ class chemistry_expressions:
                             f.write(self.reaction_expressions[reaction_number])
                             f.write("\n")
                             rnum += 1
+                    f.write(enddo+"\n")
+                    f.write(omp_enddo+"\n")
+                    if rtype in ifdef_dict:
+                        f.write(f"#endif\n")
             else:
+                rnum = 0
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
                     if rnum == 0:
                         f.write(omp_startdo+"\n")
@@ -455,8 +472,8 @@ class chemistry_expressions:
                     f.write("\n")
                     rnum += 1
 
-            f.write(enddo+"\n")
-            f.write(omp_enddo+"\n")
+                f.write(enddo+"\n")
+                f.write(omp_enddo+"\n")
             f.write("end subroutine getrates_gpu\n")
 
     def _write_chemgen_mod(self, filename, write_rtypes_together,input_MW):
@@ -583,16 +600,21 @@ class chemistry_expressions:
             f.write(self.exp_g_expr)
             f.write("\n")
 
-            rnum = 0
+            ifdef_dict = {"troe": "TROE",
+                          "third_body": "THIRD_BODY",
+                          "plog": "PLOG"}
             if write_rtypes_together:
-                for rtype in self.chem.reaction_types:
+                for rtype_id,rtype in enumerate(self.chem.reaction_types):
+                    rnum = 0
+                    if rnum == 0:
+                        if rtype in ifdef_dict:
+                            f.write(f"#ifdef {ifdef_dict[rtype]}\n")
+                        f.write(omp_startdo+"\n")
+                        f.write(startdo+"\n")
                     f.write(f"    ! Reaction type: {rtype}\n")
                     for reaction_number, reaction_expr in self.reaction_expressions.items():
                         if self.chem.reactions[reaction_number]["type"] == rtype:
-                            if rnum == 0:
-                                f.write(omp_startdo+"\n")
-                                f.write(startdo+"\n")
-                            elif rnum%10 == 0:
+                            if rnum%10 == 0 and rnum != 0:
                                 f.write(enddo+"\n")
                                 f.write(omp_enddo+"\n")
                                 f.write(omp_startdo+"\n")
@@ -601,7 +623,12 @@ class chemistry_expressions:
                             f.write(self.reaction_expressions[reaction_number])
                             f.write("\n")
                             rnum += 1
+                    f.write(enddo+"\n")
+                    f.write(omp_enddo+"\n")
+                    if rtype in ifdef_dict:
+                        f.write(f"#endif\n")
             else:
+                rnum = 0
                 for reaction_number, reaction_expr in self.reaction_expressions.items():
                     if rnum == 0:
                         f.write(omp_startdo+"\n")
@@ -616,8 +643,8 @@ class chemistry_expressions:
                     f.write("\n")
                     rnum += 1
 
-            f.write(enddo+"\n")
-            f.write(omp_enddo+"\n")
+                f.write(enddo+"\n")
+                f.write(omp_enddo+"\n")
             f.write("end subroutine getrates_omp_gpu\n")
             f.write("end module\n")
             f.write("#endif\n")
