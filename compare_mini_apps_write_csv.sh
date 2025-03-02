@@ -8,7 +8,7 @@ fi
 mini_apps_dir=$1
 
 # Define output file
-echo "ng,veclen,rpb,exec_name,cpu_cost,gpu_cost" > performance_table.csv
+echo "ng,veclen,rpb,exec_name,cpu_cost (s),gpu_cost (s)" > performance_table_${mini_apps_dir}.csv
 
 # Loop through each subfolder in mini_apps
 for dir in ${mini_apps_dir}/ng_*; do
