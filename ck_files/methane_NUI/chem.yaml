@@ -13,9 +13,9 @@ description: |-
   ****************************************************************************
 
 generator: ck2yaml
-input-files: [chem.inp, therm.dat]
-cantera-version: 3.0.0
-date: Tue, 18 Feb 2025 08:41:10 +0800
+input-files: [chem.ske50_R1_R6_dup_fix.inp, therm.dat]
+cantera-version: 3.0.1
+date: Sun, 06 Oct 2024 17:14:26 +1100
 
 units: {length: cm, time: s, quantity: mol, activation-energy: cal/mol}
 
