@@ -21,24 +21,27 @@ from jinja2 import Environment,FileSystemLoader
 
 class chemistry:
     def __init__(self, 
-                ck_file, 
-                parser, 
+                ck_file=None, 
+                parser=None, 
                 therm_file=None, 
+                yaml_file=None,
                 build_expr=False, #builds the sympy expressions for the RF and RB
                 build_graph=False,
                 qssa_species=[]):
         
         assert isinstance(parser, ckparser)
 
+        if ck_file is None and yaml_file is None:
+            raise ValueError("Either ck_file or yaml_file must be provided")
         self.__parser = parser
-        self.__reactions_dict = parser.parse_reactions(ck_file, therm_file)
+        self.__reactions_dict = parser.parse_reactions(ck_file, therm_file, yaml_file=yaml_file)
         self.n_reactions = max(self.__reactions_dict.keys())
-        self.__species_list,self.species_dict = parser.parse_species(ck_file)
+        self.__species_list,self.species_dict = parser.parse_species(ck_file, yaml_file=yaml_file)
         self.n_species_sk = len(self.__species_list)
         self.__qssa_species = qssa_species
         self.__reduced_species_list = [i for i in self.__species_list if i not in self.__qssa_species]
         self.n_species_red = len(self.__reduced_species_list)
-        self.__thermo_data = parser.parse_thermo(ck_file, therm_file)
+        self.__thermo_data = parser.parse_thermo(ck_file, therm_file,yaml_file=yaml_file)
         ##create a specname to idx map for the full mechanism
         self.__stoi = {s:i for i,s in enumerate(self.__species_list)}
         ##create an idx to specname map for the full mechanism

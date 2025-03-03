@@ -52,9 +52,10 @@ class ckparser:
     def reaction_types(self):
         return self.__reaction_types
     
-    def __cantera_reaction_parser(self, ck_file, therm_file=None):
+    def __cantera_reaction_parser(self, ck_file, therm_file=None, yaml_file=None):
         # Check if YAML file already exists
-        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+        if yaml_file is None or not os.path.exists(yaml_file):
+            yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
         if not os.path.exists(yaml_file):
             # Convert Chemkin files to YAML using ck2yaml
             if(therm_file is not None):
@@ -157,16 +158,20 @@ class ckparser:
             A_with_units = A * conc_unit**(1-dim)
         return A_with_units.to_base_units().magnitude
         
-    def __cantera_species_parser(self, ck_file):
-        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+    def __cantera_species_parser(self, ck_file, yaml_file=None):
+        # Check if YAML file already exists
+        if yaml_file is None or not os.path.exists(yaml_file):
+            yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
         if not os.path.exists(yaml_file):
             subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)
         
         gas = ct.Solution(yaml_file)
         return [sp.name for sp in gas.species()],{sp.name:sp for sp in gas.species()}
 
-    def __cantera_thermo_parser(self, ck_file, therm_file=None):
-        yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
+    def __cantera_thermo_parser(self, ck_file, therm_file=None, yaml_file=None):
+        # Check if YAML file already exists
+        if yaml_file is None or not os.path.exists(yaml_file):
+            yaml_file = os.path.splitext(ck_file)[0] + '.yaml'
         if not os.path.exists(yaml_file):
             if(therm_file is None):
                 subprocess.run(['ck2yaml', '--input', ck_file, '--output', yaml_file], check=True)

@@ -12,8 +12,9 @@ def parse_arguments():
                       help='Mode of operation: generate GPU coefficients or getrates function')
     
     # Input files
-    parser.add_argument('--mech', required=True, help='Path to mechanism input file')
-    parser.add_argument('--therm', required=True, help='Path to thermodynamic data file')
+    parser.add_argument('--mech', help='Path to mechanism input file')
+    parser.add_argument('--therm', help='Path to thermodynamic data file')
+    parser.add_argument('--yaml_file', help='Path to YAML mechanism file')
     parser.add_argument('--output', required=True, help='Output file or directory')
     
     # GPU coefficient options
@@ -55,7 +56,7 @@ def parse_arguments():
 def generate_gpu_coefficients(args):
     # Create parser and chemistry objects
     ckp = ckparser()
-    chem = chemistry(args.mech, ckp, therm_file=args.therm)
+    chem = chemistry(args.mech, ckp, therm_file=args.therm, yaml_file=args.yaml_file)
     
     # Generate coefficient module
     write_coef_module(args.output, chem, 
@@ -71,7 +72,7 @@ def generate_gpu_coefficients(args):
 def generate_getrates(args):
     # Create parser and chemistry objects
     ckp = ckparser()
-    chem = chemistry(args.mech, ckp, therm_file=args.therm)
+    chem = chemistry(args.mech, ckp, therm_file=args.therm, yaml_file=args.yaml_file)
     
     # Create chemistry expressions object with specified options
     chem_expr = chemistry_expressions(chem,
@@ -88,7 +89,7 @@ def generate_getrates(args):
 def generate_mini_app(args):
     # Create parser and chemistry objects
     ckp = ckparser()
-    chem = chemistry(args.mech, ckp, therm_file=args.therm)
+    chem = chemistry(args.mech, ckp, therm_file=args.therm, yaml_file=args.yaml_file)
     
 
     src_dir = os.path.join(args.output,f"src")
