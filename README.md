@@ -76,6 +76,12 @@ For a mechanism, run all mini apps to collect performance data:
 ./compare_mini_apps_write_csv.sh mini_apps_H2_burke
 ```
 
-With the performance data in csv file. use a python script to visualise the comparison.
 
-
+The performance data will be placed in a csv file naming `performance_table_mini_apps_<chem>.csv`
+```bash
+./plot_omp_speedup.sh performance_table_mini_apps_<chem>.csv
+#e.g.
+./plot_omp_speedup.sh performance_table_mini_apps_H2_burke.csv
+```
+figures showing how gpu-omp is speeded up with varying problem size (ng) is then generated
+and placed at a folder naming `figures_<chem>`
