@@ -94,7 +94,7 @@ class ckparser:
                             Ea_low),
                     "troe": tuple(r.rate.falloff_coeffs)
                 }
-                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
+                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.third_body.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "third_body":
                 Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
                 A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, 
@@ -128,7 +128,7 @@ class ckparser:
                                 r_dict[idx][side][species.strip()] = coeff                    
                     idx += 1
                     continue
-                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.efficiencies.items() if eff != 1.0}
+                r_dict[idx]["third_body"] = {sp: eff - 1.0 for sp, eff in r.third_body.efficiencies.items() if eff != 1.0}
             elif r_dict[idx]["type"] == "standard":
                 Ea = (r.rate.activation_energy * self.ureg.joule / self.ureg.kmol).to(self.Ea_units).magnitude
                 A = self.__convert_A_to_base_units(r.rate.pre_exponential_factor, "kmol/m**3", r.reactants)
